@@ -1,0 +1,4 @@
+name = "LifeDetection"
+uuid = "6ef60fa5-8c1b-4d8d-8887-ac9953014983"
+authors = ["Hailey Warner <hlwarner@stanford.edu>"]
+version = "0.1.0"
