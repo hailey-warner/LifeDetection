@@ -1,5 +1,6 @@
 module LifeDetection
 
-greet() = print("Hello World!")
+using POMDPs
+
 
 end # module LifeDetection
