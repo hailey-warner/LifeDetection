@@ -46,36 +46,3 @@ end
 plot_alpha_vectors(policy)
 
 # @show_requirements POMDPs.solve(solver, pomdp)
-
-# # SARSOP Specific Solver
-# using Distributions
-# solver = SARSOPSolver(verbose = true, timeout=100)
-# solver = ValueIterationSolver(max_iterations=100, belres=1e-6, verbose=true) # creates the solver
-# solve(solver, pomdp)
-# using POMDPTools
-
-# mdp = UnderlyingMDP(pomdp)
-# policy = solve(solver, mdp) # runs value iterationssl
-
-
-
-
-
-# #### TESTING
-
-# using Distributions, StatsPlots
-
-# # Parameters
-# μ = 10.0  # Mean
-# σ = 1.0  # Standard deviation
-# lb, ub = -1.0, 1.0  # Truncation bounds
-
-# InstSigma =[10.0^(i-1) for i in (num_inst-1):-1:0]
-
-# # Normal vs. Truncated Normal
-# normal_dist = Normal(μ, InstSigma[1])
-# truncated_dist = Truncated(normal_dist, 1, 10)
-# rand(truncated_dist)
-# # Visualization
-# plot(x -> pdf(normal_dist, x), -2, 12, label="Normal", lw=2)
-# plot!(x -> pdf(truncated_dist, x), -2, 12, label="Truncated (Renormalized)", lw=2, linestyle=:dash)
