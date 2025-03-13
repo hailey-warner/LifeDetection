@@ -1,7 +1,7 @@
 # module LifeDetection
 
 import POMDPs
-using POMDPs: POMDP, stateindex
+using POMDPs: POMDP
 
 using StaticArrays # for SVector
 using Parameters # for @with_kw
@@ -64,8 +64,8 @@ end
 # Custom Constructor
 function LifeDetectionPOMDP(
     NumInst::Int=3;
-    InstSigma::Vector{Float64}=[10.0^(i-2) for i in (NumInst-1):-1:0],
-    SampleTrueVal::Int=rand(0:100),
+    InstSigma::Vector{Float64}=[10.0^(i-1) for i in (NumInst-1):-1:0],
+    SampleTrueVal::Int=rand(1:10),
     SampleCertaintyMax::Int=10, 
     InstHealthMax::Int=5,
     indices = cumprod([SampleCertaintyMax, fill(InstHealthMax, NumInst-1)...]),

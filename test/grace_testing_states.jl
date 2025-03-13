@@ -25,15 +25,21 @@ for inst_2 in 1:5
 
             # Create the state
             state = LDState(sample_certainty, SVector{num_inst,Int}([inst_1,inst_2,inst_3]))
-            index = stateindex(pomdp,state)
+            a = action(policy, state)
+            index = stateindex_func(pomdp,state)
             re_state = state_from_index(pomdp, index)
             print(state)
             print(index, "   ")
-            println(re_state)
+            print(" action: ",a)
+            println(" ", re_state)
+
             end
         end
     end
 end
+
+pomdp.SampleTrueVal
+POMDPs.transition(pomdp, state_from_index(pomdp,132 ),3)
 
 state
 re_state = state_from_index(pomdp, 1249)
@@ -48,4 +54,27 @@ solve(solver, pomdp)
 using POMDPTools
 
 mdp = UnderlyingMDP(pomdp)
-solve(solver, mdp) # runs value iterationss
+policy = solve(solver, mdp) # runs value iterationssl
+
+
+
+
+
+#### TESTING
+
+using Distributions, StatsPlots
+
+# Parameters
+μ = 10.0  # Mean
+σ = 1.0  # Standard deviation
+lb, ub = -1.0, 1.0  # Truncation bounds
+
+InstSigma =[10.0^(i-1) for i in (num_inst-1):-1:0]
+
+# Normal vs. Truncated Normal
+normal_dist = Normal(μ, InstSigma[1])
+truncated_dist = Truncated(normal_dist, 1, 10)
+rand(truncated_dist)
+# Visualization
+plot(x -> pdf(normal_dist, x), -2, 12, label="Normal", lw=2)
+plot!(x -> pdf(truncated_dist, x), -2, 12, label="Truncated (Renormalized)", lw=2, linestyle=:dash)

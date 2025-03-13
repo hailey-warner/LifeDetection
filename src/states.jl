@@ -20,8 +20,10 @@ end
 # need length because states not defined perfectly
 Base.length(pomdp::LifeDetectionPOMDP) = total_states(pomdp)
 
+POMDPs.stateindex(pomdp::LifeDetectionPOMDP,s::LDState) = stateindex_func(pomdp, s)
+
 # cool way of getting state index, inspiration from Rocksample
-function stateindex(pomdp::LifeDetectionPOMDP, s::LDState)
+function stateindex_func(pomdp::LifeDetectionPOMDP, s::LDState)
 
     # Step 1: Sample Certainty index
     sample_certainty_index = s.sample_certainty - 1
@@ -33,14 +35,19 @@ function stateindex(pomdp::LifeDetectionPOMDP, s::LDState)
     end
 
     # Combine all components
-    return sample_certainty_index + inst_health_index
+    return sample_certainty_index + inst_health_index + 1
 end
 
 function state_from_index(pomdp::LifeDetectionPOMDP, index::Int)
 
-    sample_certainty = (index % pomdp.SampleCertaintyMax) + 1
+    sample_certainty = (index % pomdp.SampleCertaintyMax)
+    if sample_certainty == 0
+        sample_certainty = 10
+    end
+
     inst_health = Vector{Int}(zeros(Int, pomdp.NumInst))
 
+    index -= 1
     for i in pomdp.NumInst:-1:1
         inst_health[i] = (index ÷ pomdp.indices[i]) % pomdp.InstHealthMax + 1
         index = index % pomdp.indices[i]
@@ -65,4 +72,11 @@ function POMDPs.initialstate(pomdp::LifeDetectionPOMDP)
     return  SparseCat(states, probs)
 end
 
-
+function POMDPs.isterminal(pomdp::LifeDetectionPOMDP, s)
+    for i in 1:pomdp.NumInst
+        if s.inst_health[i] > 4
+            return false
+        end
+    end
+    return true  # Example: when all health of instruments are low
+end
