@@ -1,8 +1,16 @@
 <?xml version="1.0" encoding="ISO-8859-1"?>
 <Policy version="0.1" type="value" model="model.pomdpx" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="policyx.xsd">
-<AlphaVector vectorLength="3" numObsValue="1" numVectors="4">
+<AlphaVector vectorLength="3" numObsValue="1" numVectors="12">
+<Vector action="2" obsValue="0">-0.438751 0.606149 0 </Vector>
+<Vector action="2" obsValue="0">-1.35539 0.764553 0 </Vector>
+<Vector action="2" obsValue="0">0.377847 0.459574 0 </Vector>
 <Vector action="1" obsValue="0">-10 1 0 </Vector>
+<Vector action="2" obsValue="0">-0.693944 0.751362 0 </Vector>
 <Vector action="0" obsValue="0">1 -10 0 </Vector>
-<Vector action="3" obsValue="0">-0.199 -2.08 0 </Vector>
-<Vector action="3" obsValue="0">-1.26731 -0.6544 0 </Vector>
+<Vector action="2" obsValue="0">0.44453 0.451327 0 </Vector>
+<Vector action="2" obsValue="0">-0.639931 0.750619 0 </Vector>
+<Vector action="2" obsValue="0">0.750445 -0.634912 0 </Vector>
+<Vector action="2" obsValue="0">0.450267 0.45086 0 </Vector>
+<Vector action="2" obsValue="0">-0.635284 0.750577 0 </Vector>
+<Vector action="2" obsValue="0">0.450685 0.450826 0 </Vector>
 </AlphaVector> </Policy>

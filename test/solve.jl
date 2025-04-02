@@ -52,28 +52,21 @@ function simulate_policy(pomdp, policy, n_episodes=1)
     
     step = 1
     while !isterminal(pomdp, s) && step ≤ 10  # max 10 steps
-        # Get action from policy
+
+        # get action, next state, and observation
         a = action(policy, b)
-        
-        # Take action and get next state and observation
         sp = rand(transition(pomdp, s, a))
         o = rand(observation(pomdp, a, sp))
         
-        # Format action and observation names
-        action_name = if a == 1
-            "Declare Dead"
-        elseif a == 2
-            "Declare Life"
-        else
-            "Sensor $(a-2)"
-        end
+        # format action and observation names
+        action_name = a ≤ 2 ? (a == 1 ? "Declare Dead" : "Declare Life") : "Sensor $(a-2)"
         obs_name = o == 1 ? "Negative" : "Positive"
         
-        # Print step information
+        # show step details
         @printf("%3d  | %-12s | %-11s | %.3f\n", 
                 step, action_name, obs_name, pdf(b, 2))
         
-        # Update for next step
+        # update belief
         b = update(updater, b, a, o)
         s = sp
         step += 1
@@ -82,7 +75,5 @@ end
 
 simulate_policy(pomdp, policy)
 plot_alpha_vectors(policy)
-
-
 
 # @show_requirements POMDPs.solve(solver, pomdp)

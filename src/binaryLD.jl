@@ -33,7 +33,6 @@ POMDPs.actions(pomdp::binaryLifeDetectionPOMDP) = [1, 2, 3:2+pomdp.inst...]
 # observe biosignature is present (1) or absent (2)
 POMDPs.observations(pomdp::binaryLifeDetectionPOMDP) = [1, 2] 
 
-
 POMDPs.stateindex(pomdp::binaryLifeDetectionPOMDP, s::Int) = s
 POMDPs.actionindex(pomdp::binaryLifeDetectionPOMDP,a::Int) = a
 POMDPs.obsindex(pomdp::binaryLifeDetectionPOMDP, s::Int)   = s
