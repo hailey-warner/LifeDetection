@@ -1,21 +1,16 @@
 include("utils.jl")
 include("bayesNet.jl")
 
-
-using POMDPs: POMDP
-import POMDPs
-# using Distributions
+using POMDPs
 using POMDPTools
 
 struct binaryLifeDetectionPOMDP <: POMDP{Int, Int, Int}  # POMDP{State, Action, Observation}
     inst::Int # number of instruments (child nodes)
     bn::BayesianNetwork # Bayesian Network
-
     discount::Float64
 end
 
-
-# # Custom constructor to handle dynamic initialization
+# Custom constructor to handle dynamic initialization
 function binaryLifeDetectionPOMDP(;
     inst::Int, # number of instruments (child nodes)
     bn::BayesianNetwork, # Bayesian Network
@@ -26,58 +21,56 @@ function binaryLifeDetectionPOMDP(;
         )
 end
 
-
-
-# Life > 2, No life 1, 3 is end terminal state
+# 1 -> dead
+# 2 -> alive
+# 3 -> terminal state
 POMDPs.states(pomdp::binaryLifeDetectionPOMDP) = [1, 2, 3] 
 
-# can choose observations/sensors (3-3+n), n sensors
-# can choose declare state not active alive (1) alive (2)
+# run sensor (2+i), where i the ith instrument
+# declare dead (1) declare alive (2)
 POMDPs.actions(pomdp::binaryLifeDetectionPOMDP) = [1, 2, 3:2+pomdp.inst...]
 
-# We only observe yes or no from observation?
-# TODO: Check with Mykel if this is right
+# observe biosignature is present (1) or absent (2)
 POMDPs.observations(pomdp::binaryLifeDetectionPOMDP) = [1, 2] 
 
 
 POMDPs.stateindex(pomdp::binaryLifeDetectionPOMDP, s::Int) = s
 POMDPs.actionindex(pomdp::binaryLifeDetectionPOMDP,a::Int) = a
-POMDPs.obsindex(pomdp::binaryLifeDetectionPOMDP, s::Int) = s
+POMDPs.obsindex(pomdp::binaryLifeDetectionPOMDP, s::Int)   = s
 
-POMDPs.initialstate(pomdp::binaryLifeDetectionPOMDP) = DiscreteUniform(1, 2) # gives back a distribution between 1,2
-
+POMDPs.initialstate(pomdp::binaryLifeDetectionPOMDP) = DiscreteUniform(1, 2) # 50% chance of being alive or dead
 POMDPs.isterminal(pomdp::binaryLifeDetectionPOMDP, s::Int) = (s == 3)
 POMDPs.discount(pomdp::binaryLifeDetectionPOMDP) = pomdp.discount
 
 
 function POMDPs.transition(pomdp::binaryLifeDetectionPOMDP, s::Int, a::Int)
     if a > 2
-        return Deterministic(s)  # State of the sample life will never change
+        return Deterministic(s)  # state (alive/dead) wont change while testing sample
     else
-        return Deterministic(3) # only when we take terminal action we switch to terminal action state
+        return Deterministic(3) # switch to terminal state only when we declare alive/dead
     end
 end
 
 function POMDPs.observation(pomdp::binaryLifeDetectionPOMDP, a::Int,  sp::Int)
 
-    # if we declare we don't need observation anymore
+    # if we already declared alive/dead, observation doesn't matter
     if POMDPs.isterminal(pomdp, sp)
         return SparseCat([1, 2], [0.5,0.5])
     end
 
-    # If we declare, we don’t need observation anymore
+    # if we declare alive/dead, observation doesn't matter
     if a == 1 || a == 2
         return SparseCat([1, 2], [0.5, 0.5])
     end
 
-    # Map action index to Bayesian network variable (action 3 → A, 4 → P, 5 → C)
-    instrument_index = a - 2  # Convert action number to variable index in BN
+    # map action index to Bayesian network variable (action 3 → A, 4 → P, 5 → C)
+    instrument_index = a - 2  # convert action number to variable index in BN
     if instrument_index > length(pomdp.bn.factors)
         error("Invalid instrument action: $a")
     end
     print(a)
-    # Get the corresponding conditional probability P(O=2 | L=s)
-    factor = pomdp.bn.factors[instrument_index+1]  # Factor corresponding to chosen instrument
+    # get the corresponding conditional probability P(O=2|L=s), or P(biosignature present|alive/dead)
+    factor = pomdp.bn.factors[instrument_index+1]
     var_name = pomdp.bn.factors[instrument_index+1].vars[1].name
     key = Dict(var_name => 2, :l => sp)  
     print(key)
