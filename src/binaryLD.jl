@@ -7,6 +7,7 @@ using POMDPTools
 struct binaryLifeDetectionPOMDP <: POMDP{Int, Int, Int}  # POMDP{State, Action, Observation}
     inst::Int # number of instruments (child nodes)
     bn::BayesianNetwork # Bayesian Network
+    k::Vector{Float64} # cost of observations
     discount::Float64
 end
 
@@ -14,11 +15,10 @@ end
 function binaryLifeDetectionPOMDP(;
     inst::Int, # number of instruments (child nodes)
     bn::BayesianNetwork, # Bayesian Network
+    k::Vector{Float64} = [0.1, 0.8, 0.6], # cost of observations
     discount::Float64 = 0.9,
 )
-    return binaryLifeDetectionPOMDP(
-        inst,bn,discount,
-        )
+    return binaryLifeDetectionPOMDP(inst,bn,k,discount)
 end
 
 # 1 -> dead
@@ -38,10 +38,10 @@ POMDPs.stateindex(pomdp::binaryLifeDetectionPOMDP, s::Int) = s
 POMDPs.actionindex(pomdp::binaryLifeDetectionPOMDP,a::Int) = a
 POMDPs.obsindex(pomdp::binaryLifeDetectionPOMDP, s::Int)   = s
 
+# TODO: do we want to start with uniform prior (50% alive/dead)?
 POMDPs.initialstate(pomdp::binaryLifeDetectionPOMDP) = DiscreteUniform(1, 2) # 50% chance of being alive or dead
 POMDPs.isterminal(pomdp::binaryLifeDetectionPOMDP, s::Int) = (s == 3)
 POMDPs.discount(pomdp::binaryLifeDetectionPOMDP) = pomdp.discount
-
 
 function POMDPs.transition(pomdp::binaryLifeDetectionPOMDP, s::Int, a::Int)
     if a > 2
@@ -68,12 +68,12 @@ function POMDPs.observation(pomdp::binaryLifeDetectionPOMDP, a::Int,  sp::Int)
     if instrument_index > length(pomdp.bn.factors)
         error("Invalid instrument action: $a")
     end
-    print(a)
-    # get the corresponding conditional probability P(O=2|L=s), or P(biosignature present|alive/dead)
+    #print(a)
+    # get the corresponding conditional probability P(O|L), or P(biosignature present|alive/dead)
     factor = pomdp.bn.factors[instrument_index+1]
     var_name = pomdp.bn.factors[instrument_index+1].vars[1].name
     key = Dict(var_name => 2, :l => sp)  
-    print(key)
+    #print(key)
 
     P_yes = factor.table[key] # Probability of "yes" observation for action a (a=2 means detected)
     
@@ -81,12 +81,43 @@ function POMDPs.observation(pomdp::binaryLifeDetectionPOMDP, a::Int,  sp::Int)
     return SparseCat([1, 2], [1 - P_yes, P_yes])
 end
 
-function POMDPs.reward(pomdp::binaryLifeDetectionPOMDP, s::Int, a::Int)
+function expected_belief_change(pomdp::binaryLifeDetectionPOMDP, a::Int, prior_life::Float64)
+    if a <= 2  # Not a sensor action
+        return 0.0
+    end
+    
+    # Get sensor probabilities from Bayesian network
+    instrument_index = a - 2
+    factor = pomdp.bn.factors[instrument_index+1]
+    var_name = pomdp.bn.factors[instrument_index+1].vars[1].name
+    
+    # P(sensor|life) and P(sensor|no life)
+    P_sensor_given_life = factor.table[Dict(var_name => 2, :l => 2)]
+    P_sensor_given_nolife = factor.table[Dict(var_name => 2, :l => 1)]
+    
+    # Calculate P(sensor) using law of total probability
+    P_sensor = P_sensor_given_life * prior_life + P_sensor_given_nolife * (1 - prior_life)
+    
+    # Calculate P(life|sensor) using Bayes rule
+    P_life_given_sensor = (P_sensor_given_life * prior_life) / P_sensor
+    
+    # Expected change in belief is weighted average of belief changes
+    exp_change = P_sensor * abs(P_life_given_sensor - prior_life) + 
+                 (1 - P_sensor) * abs((prior_life - P_sensor_given_life * prior_life)/(1 - P_sensor) - prior_life)
+    
+    return exp_change
+end
+
+function POMDPs.reward(pomdp::binaryLifeDetectionPOMDP, s::Int, a::Int) #, b::Vector{Float64})
     if a == 1  # Declaring "no life"
         return s == 1 ? 1.0 : -10.0  # Reward if correct, penalty if wrong
     elseif a == 2  # Declaring "life exists"
         return s == 2 ? 1.0 : -10.0  # Reward if correct, penalty if wrong
-    else  # Any other action (sensor use)
-        return -1  # Small penalty to discourage excessive sensing
+    else  # Sensor action
+        #prior_life = b[2]  # Probability of life from current belief state
+        #exp_change = expected_belief_change(pomdp, a, prior_life)
+        return -pomdp.k[a-2]# + exp_change  # Cost of using sensor plus expected information gain
     end
 end
+
+

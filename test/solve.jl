@@ -3,13 +3,15 @@ include("../src/bayesNet.jl")
 include("../src/binaryLD.jl")
 
 using POMDPs
+using POMDPTools
+using Printf
 using SARSOP
 using POMDPLinter
 using Distributions
 using Plots
 
 num_instruments = 3
-pomdp = binaryLifeDetectionPOMDP(inst=num_instruments, bn=bn)
+pomdp = binaryLifeDetectionPOMDP(inst=num_instruments, bn=bn, k=[0.1, 0.8, 0.6], discount=0.9)
 
 solver = SARSOPSolver(verbose = true, timeout=100)
 policy = solve(solver, pomdp)
@@ -39,6 +41,48 @@ function plot_alpha_vectors(policy::AlphaVectorPolicy)
     display(plt)
 end
 
+function simulate_policy(pomdp, policy, n_episodes=1)
+    updater = DiscreteUpdater(pomdp)
+    b = initialize_belief(updater, initialstate(pomdp))
+    s = rand(initialstate(pomdp))
+    
+    println("\nPolicy Simulation:")
+    println("Step | Action | Observation | Belief(Life)")
+    println("-----------------------------------------")
+    
+    step = 1
+    while !isterminal(pomdp, s) && step ≤ 10  # max 10 steps
+        # Get action from policy
+        a = action(policy, b)
+        
+        # Take action and get next state and observation
+        sp = rand(transition(pomdp, s, a))
+        o = rand(observation(pomdp, a, sp))
+        
+        # Format action and observation names
+        action_name = if a == 1
+            "Declare Dead"
+        elseif a == 2
+            "Declare Life"
+        else
+            "Sensor $(a-2)"
+        end
+        obs_name = o == 1 ? "Negative" : "Positive"
+        
+        # Print step information
+        @printf("%3d  | %-12s | %-11s | %.3f\n", 
+                step, action_name, obs_name, pdf(b, 2))
+        
+        # Update for next step
+        b = update(updater, b, a, o)
+        s = sp
+        step += 1
+    end
+end
+
+simulate_policy(pomdp, policy)
 plot_alpha_vectors(policy)
+
+
 
 # @show_requirements POMDPs.solve(solver, pomdp)
