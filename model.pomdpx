@@ -127,27 +127,27 @@
 				</Entry>
 				<Entry>
 					<Instance>a2 s0 o0</Instance>
-					<ProbTable>0.09999999999999998</ProbTable>
+					<ProbTable>0.19999999999999996</ProbTable>
 				</Entry>
 				<Entry>
 					<Instance>a2 s0 o1</Instance>
-					<ProbTable>0.9</ProbTable>
+					<ProbTable>0.8</ProbTable>
 				</Entry>
 				<Entry>
 					<Instance>a3 s0 o0</Instance>
-					<ProbTable>0.09999999999999998</ProbTable>
+					<ProbTable>0.010000000000000009</ProbTable>
 				</Entry>
 				<Entry>
 					<Instance>a3 s0 o1</Instance>
-					<ProbTable>0.9</ProbTable>
+					<ProbTable>0.99</ProbTable>
 				</Entry>
 				<Entry>
 					<Instance>a4 s0 o0</Instance>
-					<ProbTable>0.09999999999999998</ProbTable>
+					<ProbTable>0.050000000000000044</ProbTable>
 				</Entry>
 				<Entry>
 					<Instance>a4 s0 o1</Instance>
-					<ProbTable>0.9</ProbTable>
+					<ProbTable>0.95</ProbTable>
 				</Entry>
 				<Entry>
 					<Instance>a0 s1 o0</Instance>
@@ -175,19 +175,19 @@
 				</Entry>
 				<Entry>
 					<Instance>a3 s1 o0</Instance>
-					<ProbTable>0.5</ProbTable>
+					<ProbTable>0.8</ProbTable>
 				</Entry>
 				<Entry>
 					<Instance>a3 s1 o1</Instance>
-					<ProbTable>0.5</ProbTable>
+					<ProbTable>0.19999999999999996</ProbTable>
 				</Entry>
 				<Entry>
 					<Instance>a4 s1 o0</Instance>
-					<ProbTable>0.5</ProbTable>
+					<ProbTable>0.7</ProbTable>
 				</Entry>
 				<Entry>
 					<Instance>a4 s1 o1</Instance>
-					<ProbTable>0.5</ProbTable>
+					<ProbTable>0.30000000000000004</ProbTable>
 				</Entry>
 				<Entry>
 					<Instance>a0 s2 o0</Instance>
