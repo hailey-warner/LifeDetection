@@ -25,7 +25,7 @@ function plot_alpha_vectors(policy::AlphaVectorPolicy)
     b = range(0, 1, length=100)
 
     # plot each alpha vector
-    plt = plot(title="Alpha Vectors (Piecewise-Linear Value Function)",
+    plt = plot(title="SARSOP Alpha Vectors",
                xlabel="Belief in L=1", ylabel="Value Function")
 
     for i in 1:num_vectors
