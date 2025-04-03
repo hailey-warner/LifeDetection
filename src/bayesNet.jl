@@ -18,15 +18,15 @@ P_alive = 0.5
 P_dead = 1 - P_alive
 
 # P(Sensor=true | L=true)
-P_a_alive = 0.90
-P_p_alive = 0.70
+P_a_alive = 0.9
+P_p_alive = 0.7
 P_c_alive = 0.75
 
 # False positive rates. Fixed by instrumentation.
 # P(Sensor=true | L=false)
-P_a_dead = 0.10
-P_p_dead = 0.30
-P_c_dead = 0.25
+P_a_dead = 1 - P_a_alive
+P_p_dead = 1 - P_p_alive
+P_c_dead = 1 - P_c_alive
 
 # P(Sensor=true)
 P_a = 0.50

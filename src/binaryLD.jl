@@ -15,7 +15,7 @@ end
 function binaryLifeDetectionPOMDP(;
     inst::Int, # number of instruments (child nodes)
     bn::BayesianNetwork, # Bayesian Network
-    k::Vector{Float64} = [0.1, 0.8, 0.6], # cost of observations
+    k::Vector{Float64} = [0.3, 0.8, 0.6], # cost of observations
     discount::Float64 = 0.9,
 )
     return binaryLifeDetectionPOMDP(inst,bn,k,discount)
