@@ -13,30 +13,35 @@ vars = [L, A, P, C]
 # Bayes Rule:
 # P(L=true|A=true) = P(A=true|L=true)P(L=true) / P(A=true)
 
-# for now, set the probability of life to be 50% (uniform)
+# Prior. Defined by science team.
 P_alive = 0.5
-P_dead = 1 - P_alive
 
+# True positive rates. Defined by instrumentation.
 # P(Sensor=true | L=true)
 P_a_alive = 0.90
 P_p_alive = 0.70
 P_c_alive = 0.75
 
-# False positive rates. Fixed by instrumentation.
+# False positive rates. Defined by instrumentation.
 # P(Sensor=true | L=false)
-P_a_dead = 0.10
-P_p_dead = 0.30
-P_c_dead = 0.25
+P_a_dead = 0.050
+P_p_dead = 0.025
+P_c_dead = 0.100
 
-# P(Sensor=true)
-P_a = 0.50
-P_p = 0.50
-P_c = 0.50
+# Marginal probability / evidence. (Law of total probability)
+P_a = P_a_alive * P_alive + P_a_dead * P_dead
+P_p = P_p_alive * P_alive + P_p_dead * P_dead
+P_c = P_c_alive * P_alive + P_c_dead * P_dead
+
+# Posterior probability. (Bayes Rule)
+P_alive_a = P_a_alive * P_alive / P_a
+P_alive_p = P_p_alive * P_alive / P_p
+P_alive_c = P_c_alive * P_alive / P_c
 
 
 factors = [
 # Prior
-Factor([L], FactorTable((l=1,) => P_alive, (l=2,) => P_dead)),
+Factor([L], FactorTable((l=1,) => P_alive, (l=2,) => 1-P_alive)),
 
 # Set factor table
 Factor([A,L], FactorTable(
