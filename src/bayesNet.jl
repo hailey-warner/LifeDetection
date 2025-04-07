@@ -15,6 +15,7 @@ vars = [L, A, P, C]
 
 # Prior. Defined by science team.
 P_alive = 0.5
+P_dead = 1 - P_alive
 
 # True positive rates. Defined by instrumentation.
 # P(Sensor=true | L=true)
@@ -41,7 +42,7 @@ P_alive_c = P_c_alive * P_alive / P_c
 
 factors = [
 # Prior
-Factor([L], FactorTable((l=1,) => P_alive, (l=2,) => 1-P_alive)),
+Factor([L], FactorTable((l=1,) => P_alive, (l=2,) => P_dead)),
 
 # Set factor table
 Factor([A,L], FactorTable(
@@ -60,8 +61,7 @@ Factor([C,L], FactorTable(
     (c=1,l=1) => P_c_alive, 
     (c=2,l=1) => 1 - P_c_alive, 
     (c=1,l=2) => P_c_dead, 
-    (c=2,l=2) => 1 - P_c_dead, 
-            
+    (c=2,l=2) => 1 - P_c_dead,     
 ))
 ]
 

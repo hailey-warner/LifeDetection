@@ -9,11 +9,12 @@ using SARSOP
 using POMDPLinter
 using Distributions
 using Plots
+using PointBasedValueIteration
 
 num_instruments = 3
-pomdp = binaryLifeDetectionPOMDP(inst=num_instruments, bn=bn, k=[0.1, 0.8, 0.6], discount=0.9)
+pomdp = binaryLifeDetectionPOMDP(inst=num_instruments, bn=bn, k=[0.1, 0.8, 0.6], b=0.5, discount=0.9)
 
-solver = SARSOPSolver(verbose = true, timeout=100)
+solver = PBVISolver(verbose=true)
 policy = solve(solver, pomdp)
 
 function plot_alpha_vectors(policy::AlphaVectorPolicy)
