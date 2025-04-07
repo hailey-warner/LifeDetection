@@ -131,7 +131,7 @@
 				</Entry>
 				<Entry>
 					<Instance>a2 s0 o1</Instance>
-					<ProbTable>0.09999999999999998</ProbTable>
+					<ProbTable>0.1</ProbTable>
 				</Entry>
 				<Entry>
 					<Instance>a3 s0 o0</Instance>
@@ -139,7 +139,7 @@
 				</Entry>
 				<Entry>
 					<Instance>a3 s0 o1</Instance>
-					<ProbTable>0.30000000000000004</ProbTable>
+					<ProbTable>0.3</ProbTable>
 				</Entry>
 				<Entry>
 					<Instance>a4 s0 o0</Instance>
@@ -247,15 +247,15 @@
 				</Entry>
 				<Entry>
 					<Instance>a2 s0</Instance>
-					<ValueTable>-0.1</ValueTable>
+					<ValueTable>-1.0</ValueTable>
 				</Entry>
 				<Entry>
 					<Instance>a3 s0</Instance>
-					<ValueTable>-0.8</ValueTable>
+					<ValueTable>-0.05</ValueTable>
 				</Entry>
 				<Entry>
 					<Instance>a4 s0</Instance>
-					<ValueTable>-0.6</ValueTable>
+					<ValueTable>-0.08</ValueTable>
 				</Entry>
 				<Entry>
 					<Instance>a0 s1</Instance>
@@ -267,15 +267,15 @@
 				</Entry>
 				<Entry>
 					<Instance>a2 s1</Instance>
-					<ValueTable>-0.1</ValueTable>
+					<ValueTable>-1.0</ValueTable>
 				</Entry>
 				<Entry>
 					<Instance>a3 s1</Instance>
-					<ValueTable>-0.8</ValueTable>
+					<ValueTable>-0.05</ValueTable>
 				</Entry>
 				<Entry>
 					<Instance>a4 s1</Instance>
-					<ValueTable>-0.6</ValueTable>
+					<ValueTable>-0.08</ValueTable>
 				</Entry>
 			</Parameter>
 		</Func>
