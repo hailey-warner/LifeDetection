@@ -1,3 +1,12 @@
+
+using POMDPs
+using POMDPTools
+using Printf
+using SARSOP
+using POMDPLinter
+using Distributions
+using Plots
+
 include("../src/bayesNet.jl")
 include("../src/binaryLD.jl")
 include("../src/common/plotting.jl")
@@ -7,13 +16,6 @@ include("../src/common/utils.jl")
 
 include("greedy.jl")
 
-using POMDPs
-using POMDPTools
-using Printf
-using SARSOP
-using POMDPLinter
-using Distributions
-using Plots
 
 num_instruments = 3
 # Bayes Net:
@@ -28,7 +30,7 @@ probability_tables = [
 
 bn = bayes_net(variable_specs, dependencies, probability_tables)
 # println("YA")
-# # Example Usage
+# Example Usage
 # num_instruments = 3
 # instrument_names = ["sensorA", "sensorB", "sensorC"]
 # instrument_probs_alive = [0.9, 0.7, 0.75] # Probabilities of detection given life exists
@@ -49,19 +51,37 @@ bn = bayes_net(variable_specs, dependencies, probability_tables)
 # Example usage
 # a = (l=2, a=1, p=1, c=1)
 # probability(bn, Assignment(a))
+reward_list = []
+acc_list = []
+end_λ = 1000
+for λ in range(1, end_λ)
+    pomdp = binaryLifeDetectionPOMDP(inst=num_instruments, bn=bn, λ=λ,  k=[1, 0.05, 0.08], discount=0.9)
 
+    if true
+        solver = SARSOPSolver(verbose = true, timeout=100)
+        policy = solve(solver, pomdp)
+        rewards, acc = simulate_policy(pomdp, policy, "SARSOP", 200,false)
+        push!(reward_list, rewards)
+        push!(acc_list, acc)
+        # plot_alpha_vectors(policy)
+    end
 
-pomdp = binaryLifeDetectionPOMDP(inst=num_instruments, bn=bn, k=[1, 0.05, 0.08], discount=0.9)
-
-if true
-    solver = SARSOPSolver(verbose = true, timeout=100)
-    policy = solve(solver, pomdp)
-
-    simulate_policy(pomdp, policy)
-    plot_alpha_vectors(policy)
 end
 
+print(reward_list)
+print(acc_list)
+
+
+# Prepare the data ranges
+x = range(1, end_λ)
+
+# Create two separate plots
+p1 = scatter(x, reward_list, color=:blue, xlabel="λ", ylabel="Reward Value", title="Reward", label="rewards")
+p2 = scatter(x, acc_list, color=:red, xlabel="λ", ylabel="Accuracy (0 to 1)", title="Accuracy", label="Accuracy")
+
+# Combine them side by side
+plot(p1, p2, layout=(1, 2), size=(800, 400), title="Pareto Frontier")
 # policy = load_policy(pomdp,"policy.out")
-simulate_policy(pomdp, policy, "greedy",10) # SARSOP or greedy
+# simulate_policy(pomdp, policy, "greedy",10) # SARSOP or greedy
 
 # @show_requirements POMDPs.solve(solver, pomdp)
