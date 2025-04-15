@@ -23,7 +23,6 @@ function bayes_net(variable_specs, dependencies, probability_tables)
     return BayesianNetwork(vars, factors, graph)
 end
 
-
 function create_bayes_net(num_instruments, instrument_names, instrument_probs_alive, instrument_probs_dead)
     # Define base variables
     variable_specs = [Variable(:l, 2)] # Life variable

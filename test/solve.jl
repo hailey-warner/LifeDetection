@@ -12,12 +12,11 @@ include("../src/binaryLD.jl")
 include("../src/common/plotting.jl")
 include("../src/common/simulate.jl")
 include("../src/common/utils.jl")
-
-
 include("greedy.jl")
 
 
 num_instruments = 3
+
 # Bayes Net:
 variable_specs = [(:l, 2), (:a, 2), (:p, 2), (:c, 2)]
 dependencies = [(:l, :a), (:l, :p), (:l, :c)]
@@ -25,8 +24,7 @@ probability_tables = [
     ([:l], [(l=1,) => 0.5, (l=2,) => 0.5]),
     ([:a, :l], [(a=1, l=1) => 0.9, (a=2, l=1) => 0.1, (a=1, l=2) => 0.1, (a=2, l=2) => 0.9]),
     ([:p, :l], [(p=1, l=1) => 0.7, (p=2, l=1) => 0.3, (p=1, l=2) => 0.3, (p=2, l=2) => 0.7]),
-    ([:c, :l], [(c=1, l=1) => 0.75, (c=2, l=1) => 0.25, (c=1, l=2) => 0.25, (c=2, l=2) => 0.75])
-]
+    ([:c, :l], [(c=1, l=1) => 0.75, (c=2, l=1) => 0.25, (c=1, l=2) => 0.25, (c=2, l=2) => 0.75])]
 
 bn = bayes_net(variable_specs, dependencies, probability_tables)
 # println("YA")
