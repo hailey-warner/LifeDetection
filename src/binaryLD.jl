@@ -8,6 +8,7 @@ struct binaryLifeDetectionPOMDP <: POMDP{Int, Int, Int}  # POMDP{State, Action, 
     inst::Int # number of instruments (child nodes)
     bn::BayesianNetwork # Bayesian Network
     k::Vector{Float64} # cost of observations
+    λ::Int  # cost of declaring alive/dead
     b::Float64 # belief state (probability of life)
     discount::Float64
 end
@@ -106,19 +107,18 @@ function expected_belief_change(pomdp::binaryLifeDetectionPOMDP, a::Int)
     
     # compute posterior P(L|o)
     P_L_o = (P_o_alive * pomdp.b) / P_o 
-    
-    # Expected change in belief is weighted average of absolute belief changes
-    exp_change = 0.1*abs(pomdp.b - P_L_o)
-    println("exp_change: ", exp_change)
+
+    exp_change = abs(pomdp.b - P_L_o)
+    #println("exp_change: ", exp_change)
     
     return exp_change
 end
 
 function POMDPs.reward(pomdp::binaryLifeDetectionPOMDP, s::Int, a::Int)
     if a == 1  # Declaring "no life"
-        return s == 1 ? 1.0 : -10.0  # Reward if correct, penalty if wrong
+        return s == 1 ? 1.0 : -pomdp.λ  # Reward if correct, penalty if wrong
     elseif a == 2  # Declaring "life exists"
-        return s == 2 ? 1.0 : -10.0  # Reward if correct, penalty if wrong
+        return s == 2 ? 1.0 : -pomdp.λ  # Reward if correct, penalty if wrong
     else  # Sensor action
         exp_change = expected_belief_change(pomdp, a)
         return -pomdp.k[a-2] + exp_change  # Cost of using sensor plus expected information gain
