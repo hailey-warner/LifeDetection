@@ -1,12 +1,12 @@
-include("utils.jl")
-include("bayesNet.jl")
+
 
 using POMDPs
 using POMDPTools
 
 struct binaryLifeDetectionPOMDP <: POMDP{Int, Int, Int}  # POMDP{State, Action, Observation}
     inst::Int # number of instruments (child nodes)
-    bn::BayesianNetwork # Bayesian Network
+    bn::BayesianNetwork # Bayesian Network,
+    λ::Int
     k::Vector{Float64} # cost of observations
     λ::Int  # cost of declaring alive/dead
     b::Float64 # belief state (probability of life)

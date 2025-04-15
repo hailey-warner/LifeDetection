@@ -1,6 +1,3 @@
-include("../src/utils.jl")
-include("../src/bayesNet.jl")
-include("../src/binaryLD.jl")
 
 using POMDPs
 using POMDPTools
@@ -11,70 +8,79 @@ using Distributions
 using Plots
 #using PointBasedValueIteration
 
+include("../src/bayesNet.jl")
+include("../src/binaryLD.jl")
+include("../src/common/plotting.jl")
+include("../src/common/simulate.jl")
+include("../src/common/utils.jl")
+include("greedy.jl")
+
+
 num_instruments = 3
-pomdp = binaryLifeDetectionPOMDP(inst=num_instruments, bn=bn, k=[0.1, 0.8, 0.6], λ=5, b=0.5, discount=0.9)
 
-solver = SARSOPSolver(verbose=true)
-policy = solve(solver, pomdp)
+# Bayes Net:
+variable_specs = [(:l, 2), (:a, 2), (:p, 2), (:c, 2)]
+dependencies = [(:l, :a), (:l, :p), (:l, :c)]
+probability_tables = [
+    ([:l], [(l=1,) => 0.5, (l=2,) => 0.5]),
+    ([:a, :l], [(a=1, l=1) => 0.9, (a=2, l=1) => 0.1, (a=1, l=2) => 0.1, (a=2, l=2) => 0.9]),
+    ([:p, :l], [(p=1, l=1) => 0.7, (p=2, l=1) => 0.3, (p=1, l=2) => 0.3, (p=2, l=2) => 0.7]),
+    ([:c, :l], [(c=1, l=1) => 0.75, (c=2, l=1) => 0.25, (c=1, l=2) => 0.25, (c=2, l=2) => 0.75])]
 
-function plot_alpha_vectors(policy::AlphaVectorPolicy)
-    alpha_vectors = policy.alphas # get alpha vectors
-    num_states = size(alpha_vectors, 2) 
-    num_vectors = size(alpha_vectors, 1) # number of alpha vectors
-    
-    # x-axis represents belief L = 1 (confidence in sample being alive)
-    b = range(0, 1, length=100)
+bn = bayes_net(variable_specs, dependencies, probability_tables)
+# println("YA")
+# Example Usage
+# num_instruments = 3
+# instrument_names = ["sensorA", "sensorB", "sensorC"]
+# instrument_probs_alive = [0.9, 0.7, 0.75] # Probabilities of detection given life exists
+# instrument_probs_dead = [0.1, 0.3, 0.25]  # Probabilities of false detection given no life
 
-    # plot each alpha vector
-    plt = plot(title="SARSOP Alpha Vectors",
-               xlabel="Belief in L=1", ylabel="Value Function")
+# bn = create_bayes_net(num_instruments, instrument_names, instrument_probs_alive, instrument_probs_dead)
 
-    for i in 1:num_vectors
-        # Compute the value function for belief state b
-        # V(b) = α₁*b + α₂*(1-b)
-        V_b = [alpha_vectors[i][1] * b_i + alpha_vectors[i][2] * (1 - b_i) for b_i in b]
-        
-        # Plot each alpha vector as a line
-        # note : if action i isn't present, it means running instrument i was not optimal.
-        plot!(b, V_b, label="α_$i (a=$(policy.action_map[i]))")
+
+# # Example Usage
+# num_instruments = 3
+# instrument_probs = [0.9, 0.7, 0.75] # Probabilities of detection given life exists
+
+# bn = create_bayes_net(num_instruments, instrument_probs)
+
+
+# a = (l=2, i1=1, i2=1, i3=1)
+# probability(bn, Assignment(a))
+# Example usage
+# a = (l=2, a=1, p=1, c=1)
+# probability(bn, Assignment(a))
+reward_list = []
+acc_list = []
+end_λ = 1000
+for λ in range(1, end_λ)
+    pomdp = binaryLifeDetectionPOMDP(inst=num_instruments, bn=bn, λ=λ,  k=[1, 0.05, 0.08], discount=0.9)
+
+    if true
+        solver = SARSOPSolver(verbose = true, timeout=100)
+        policy = solve(solver, pomdp)
+        rewards, acc = simulate_policy(pomdp, policy, "SARSOP", 200,false)
+        push!(reward_list, rewards)
+        push!(acc_list, acc)
+        # plot_alpha_vectors(policy)
     end
 
-    display(plt)
 end
 
-function simulate_policy(pomdp, policy, n_episodes=1)
-    updater = DiscreteUpdater(pomdp)
-    b = initialize_belief(updater, initialstate(pomdp))
-    s = rand(initialstate(pomdp))
-    
-    println("\nPolicy Simulation:")
-    println("Step | Action | Observation | Belief(Life)")
-    println("-----------------------------------------")
-    
-    step = 1
-    while !isterminal(pomdp, s) && step ≤ 10  # max 10 steps
+print(reward_list)
+print(acc_list)
 
-        # get action, next state, and observation
-        a = action(policy, b)
-        sp = rand(transition(pomdp, s, a))
-        o = rand(observation(pomdp, a, sp))
-        
-        # format action and observation names
-        action_name = a ≤ 2 ? (a == 1 ? "Declare Dead" : "Declare Life") : "Sensor $(a-2)"
-        obs_name = o == 1 ? "Negative" : "Positive"
-        
-        # show step details
-        @printf("%3d  | %-12s | %-11s | %.3f\n", 
-                step, action_name, obs_name, pdf(b, 2))
-        
-        # update belief
-        b = update(updater, b, a, o)
-        s = sp
-        step += 1
-    end
-end
 
-simulate_policy(pomdp, policy)
-plot_alpha_vectors(policy)
+# Prepare the data ranges
+x = range(1, end_λ)
+
+# Create two separate plots
+p1 = scatter(x, reward_list, color=:blue, xlabel="λ", ylabel="Reward Value", title="Reward", label="rewards")
+p2 = scatter(x, acc_list, color=:red, xlabel="λ", ylabel="Accuracy (0 to 1)", title="Accuracy", label="Accuracy")
+
+# Combine them side by side
+plot(p1, p2, layout=(1, 2), size=(800, 400), title="Pareto Frontier")
+# policy = load_policy(pomdp,"policy.out")
+# simulate_policy(pomdp, policy, "greedy",10) # SARSOP or greedy
 
 # @show_requirements POMDPs.solve(solver, pomdp)
