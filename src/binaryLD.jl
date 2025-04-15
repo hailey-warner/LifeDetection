@@ -1,12 +1,12 @@
-include("utils.jl")
-include("bayesNet.jl")
+
 
 using POMDPs
 using POMDPTools
 
 struct binaryLifeDetectionPOMDP <: POMDP{Int, Int, Int}  # POMDP{State, Action, Observation}
     inst::Int # number of instruments (child nodes)
-    bn::BayesianNetwork # Bayesian Network
+    bn::BayesianNetwork # Bayesian Network,
+    λ::Int
     k::Vector{Float64} # cost of observations
     discount::Float64
 end
@@ -14,11 +14,12 @@ end
 # Custom constructor to handle dynamic initialization
 function binaryLifeDetectionPOMDP(;
     inst::Int, # number of instruments (child nodes)
-    bn::BayesianNetwork, # Bayesian Network
-    k::Vector{Float64} = [0.1, 0.8, 0.6], # cost of observations
+    bn::BayesianNetwork, # Bayesian Network,
+    λ::Int,
+    k::Vector{Float64} = [0.3, 0.8, 0.6], # cost of observations
     discount::Float64 = 0.9,
 )
-    return binaryLifeDetectionPOMDP(inst,bn,k,discount)
+    return binaryLifeDetectionPOMDP(inst,bn,λ,k,discount)
 end
 
 # 1 -> dead
@@ -109,9 +110,9 @@ end
 
 function POMDPs.reward(pomdp::binaryLifeDetectionPOMDP, s::Int, a::Int) #, b::Vector{Float64})
     if a == 1  # Declaring "no life"
-        return s == 1 ? 1.0 : -10.0  # Reward if correct, penalty if wrong
+        return s == 1 ? 1.0 : -pomdp.λ  # Reward if correct, penalty if wrong
     elseif a == 2  # Declaring "life exists"
-        return s == 2 ? 1.0 : -10.0  # Reward if correct, penalty if wrong
+        return s == 2 ? 1.0 : -pomdp.λ  # Reward if correct, penalty if wrong
     else  # Sensor action
         #prior_life = b[2]  # Probability of life from current belief state
         #exp_change = expected_belief_change(pomdp, a, prior_life)
