@@ -6,6 +6,7 @@ using SARSOP
 using POMDPLinter
 using Distributions
 using Plots
+#using PointBasedValueIteration
 
 include("../src/bayesNet.jl")
 include("../src/binaryLD.jl")

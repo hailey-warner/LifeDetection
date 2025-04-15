@@ -71,6 +71,7 @@ function create_bayes_net(num_instruments, instrument_names, instrument_probs_al
     return BayesianNetwork(vars, factors, graph)
 end
 
+
 # # Example Usage
 # num_instruments = 3
 # instrument_names = ["sensorA", "sensorB", "sensorC"]
@@ -81,3 +82,4 @@ end
 
 # a = (:l=>2, :sensorA=>1, :sensorB=>1, :sensorC=>1)
 # probability(bn, Assignment(a))
+
