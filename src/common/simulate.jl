@@ -1,12 +1,10 @@
-function simulate_policy(pomdp, policy, type = "SARSOP", n_episodes=1,verbose = true)
+function simulate_policy(pomdp, policy, type="SARSOP", n_episodes=1,verbose=true)
     
-
     if verbose
         println("--------------------------------START EPISODES---------------------------------")
     end
 
     total_episode_rewards = []
-
     accuracy = []
 
     for episode in range(1, n_episodes)

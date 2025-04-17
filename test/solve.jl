@@ -6,7 +6,6 @@ using SARSOP
 using POMDPLinter
 using Distributions
 using Plots
-#using PointBasedValueIteration
 
 include("../src/bayesNet.jl")
 include("../src/binaryLD.jl")
@@ -16,60 +15,40 @@ include("../src/common/utils.jl")
 include("greedy.jl")
 
 
-num_instruments = 3
+num_instruments = 4
 
 # Bayes Net:
-variable_specs = [(:l, 2), (:a, 2), (:p, 2), (:c, 2)]
-dependencies = [(:l, :a), (:l, :p), (:l, :c)]
+variable_specs = [(:l, 2), (:a, 2), (:p, 2), (:c, 2), (:h, 2), (:i, 2)]
+dependencies = [(:l, :a), (:l, :p), (:l, :c), (:a, :h), (:a, :i), (:p, :i), (:c, :i)]
 probability_tables = [
     ([:l], [(l=1,) => 0.5, (l=2,) => 0.5]),
-    ([:a, :l], [(a=1, l=1) => 0.9, (a=2, l=1) => 0.1, (a=1, l=2) => 0.1, (a=2, l=2) => 0.9]),
-    ([:p, :l], [(p=1, l=1) => 0.7, (p=2, l=1) => 0.3, (p=1, l=2) => 0.3, (p=2, l=2) => 0.7]),
-    ([:c, :l], [(c=1, l=1) => 0.75, (c=2, l=1) => 0.25, (c=1, l=2) => 0.25, (c=2, l=2) => 0.75])]
+    ([:a, :l], [(a=1, l=1) => 0.9,  (a=2, l=1) => 0.1,  (a=1, l=2) => 0.05, (a=2, l=2) => 0.95]),
+    ([:p, :l], [(p=1, l=1) => 0.7,  (p=2, l=1) => 0.3,  (p=1, l=2) => 0.2,  (p=2, l=2) => 0.8 ]),
+    ([:c, :l], [(c=1, l=1) => 0.75, (c=2, l=1) => 0.25, (c=1, l=2) => 0.3,  (c=2, l=2) => 0.7 ]),
+    ([:h, :a], [(h=1, a=1) => 0.9,  (h=2, a=1) => 0.1,  (h=1, a=2) => 0.15, (h=2, a=2) => 0.85]),
+    ([:i, :a], [(i=1, a=1) => 0.7,  (i=2, a=1) => 0.3,  (i=1, a=2) => 0.6,  (i=2, a=2) => 0.4 ]),
+    ([:i, :p], [(i=1, p=1) => 0.8,  (i=2, p=1) => 0.2,  (i=1, p=2) => 0.9,  (i=2, p=2) => 0.1 ]),
+    ([:i, :c], [(i=1, c=1) => 0.8,  (i=2, c=1) => 0.2,  (i=1, c=2) => 0.7,  (i=2, c=2) => 0.3 ]),
+    ]
 
 bn = bayes_net(variable_specs, dependencies, probability_tables)
-# println("YA")
-# Example Usage
-# num_instruments = 3
-# instrument_names = ["sensorA", "sensorB", "sensorC"]
-# instrument_probs_alive = [0.9, 0.7, 0.75] # Probabilities of detection given life exists
-# instrument_probs_dead = [0.1, 0.3, 0.25]  # Probabilities of false detection given no life
+plot_bayes_net(bn) # draw graph
 
-# bn = create_bayes_net(num_instruments, instrument_names, instrument_probs_alive, instrument_probs_dead)
-
-
-# # Example Usage
-# num_instruments = 3
-# instrument_probs = [0.9, 0.7, 0.75] # Probabilities of detection given life exists
-
-# bn = create_bayes_net(num_instruments, instrument_probs)
-
-
-# a = (l=2, i1=1, i2=1, i3=1)
-# probability(bn, Assignment(a))
-# Example usage
-# a = (l=2, a=1, p=1, c=1)
-# probability(bn, Assignment(a))
 reward_list = []
 acc_list = []
-end_λ = 1000
+end_λ = 1 # 1000
 for λ in range(1, end_λ)
-    pomdp = binaryLifeDetectionPOMDP(inst=num_instruments, bn=bn, λ=λ,  k=[1, 0.05, 0.08], discount=0.9)
-
-    if true
-        solver = SARSOPSolver(verbose = true, timeout=100)
-        policy = solve(solver, pomdp)
-        rewards, acc = simulate_policy(pomdp, policy, "SARSOP", 200,false)
-        push!(reward_list, rewards)
-        push!(acc_list, acc)
-        # plot_alpha_vectors(policy)
-    end
-
+    pomdp = binaryLifeDetectionPOMDP(inst=num_instruments, bn=bn, λ=λ,  k=[0.1, 0.8, 0.6, 0.2], discount=0.9)
+    solver = SARSOPSolver(verbose=true, timeout=100)
+    policy = solve(solver, pomdp)
+    plot_alpha_vectors(policy)
+    rewards, acc = simulate_policy(pomdp, policy, "SARSOP", 200,false) # SARSOP or greedy
+    push!(reward_list, rewards)
+    push!(acc_list, acc)
 end
 
-print(reward_list)
-print(acc_list)
-
+#print(reward_list)
+#print(acc_list)
 
 # Prepare the data ranges
 x = range(1, end_λ)
