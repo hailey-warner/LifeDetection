@@ -4,6 +4,7 @@ using GraphPlot
 using Compose
 using Cairo
 using Fontconfig
+using D3Trees
 
 function plot_alpha_vectors(policy::AlphaVectorPolicy)
     # get alpha vectors
@@ -15,7 +16,7 @@ function plot_alpha_vectors(policy::AlphaVectorPolicy)
     b = range(0, 1, length=100)
 
     # plot each alpha vector
-    plt = plot(title="Alpha Vectors (Piecewise-Linear Value Function)",
+    p = plot(title="Alpha Vectors (Piecewise-Linear Value Function)",
                xlabel="Belief in L=1", ylabel="Value Function")
 
     for i in 1:num_vectors
@@ -28,7 +29,9 @@ function plot_alpha_vectors(policy::AlphaVectorPolicy)
         plot!(b, V_b, label="α_$i (a=$(policy.action_map[i]))")
     end
 
-    display(plt)
+    display(p)
+    savefig(p, "alpha_vectors.png")
+    return p
 end
 
 function plot_bayes_net(bn::BayesianNetwork)
@@ -48,12 +51,21 @@ function plot_bayes_net(bn::BayesianNetwork)
     return p
 end
 
-function plot_decision_tree()
-    # nodes = actions (instruments run) + belief (P(life))
+function plot_decision_tree(tree_data::Tuple{Vector{String}, Vector{String}, Vector{Tuple{Int64, Int64}}})
+    # nodes = actions (instrument run) + belief (P(life))
     # edges = observations (biosignature present/absent)
 
-    node_labels = 
+    node_labels, edge_labels, edges = tree_data
 
-    draw(PNG("decision_tree.png", 16cm, 16cm), p)
-    return p
+    children = [Int[] for _ in 1:length(node_labels)]
+
+    for (i, j) in edges
+        push!(children[i], j)
+    end
+    println("children: ", children)
+
+    tree = D3Tree(children, text=node_labels, init_expand=true)
+    inchrome(tree)
+    return tree
 end
+

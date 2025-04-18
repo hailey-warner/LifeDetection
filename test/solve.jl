@@ -32,34 +32,37 @@ probability_tables = [
     ]
 
 bn = bayes_net(variable_specs, dependencies, probability_tables)
-plot_bayes_net(bn) # draw graph
+plot_bayes_net(bn) # save graph
 
 reward_list = []
 acc_list = []
+
 end_λ = 1 # 1000
 for λ in range(1, end_λ)
     pomdp = binaryLifeDetectionPOMDP(inst=num_instruments, bn=bn, λ=λ,  k=[0.1, 0.8, 0.6, 0.2], discount=0.9)
     solver = SARSOPSolver(verbose=true, timeout=100)
     policy = solve(solver, pomdp)
     plot_alpha_vectors(policy)
-    rewards, acc = simulate_policy(pomdp, policy, "SARSOP", 200,false) # SARSOP or greedy
+    rewards, accuracy = simulate_policy(pomdp, policy, "SARSOP", 200, false) # SARSOP or greedy
     push!(reward_list, rewards)
-    push!(acc_list, acc)
+    push!(acc_list, accuracy)
 end
+
+# temporary
+pomdp = binaryLifeDetectionPOMDP(inst=num_instruments, bn=bn, λ=1,  k=[0.1, 0.8, 0.6, 0.2], discount=0.9)
+solver = SARSOPSolver(verbose=true, timeout=100)
+policy = solve(solver, pomdp)
+tree_data = decision_tree(pomdp, policy)
+println(tree_data)
+plot_decision_tree(tree_data)
 
 #print(reward_list)
 #print(acc_list)
 
-# Prepare the data ranges
+# construct λ pareto plot
 x = range(1, end_λ)
-
-# Create two separate plots
 p1 = scatter(x, reward_list, color=:blue, xlabel="λ", ylabel="Reward Value", title="Reward", label="rewards")
 p2 = scatter(x, acc_list, color=:red, xlabel="λ", ylabel="Accuracy (0 to 1)", title="Accuracy", label="Accuracy")
-
-# Combine them side by side
 plot(p1, p2, layout=(1, 2), size=(800, 400), title="Pareto Frontier")
-# policy = load_policy(pomdp,"policy.out")
-# simulate_policy(pomdp, policy, "greedy",10) # SARSOP or greedy
 
 # @show_requirements POMDPs.solve(solver, pomdp)
