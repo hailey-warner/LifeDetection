@@ -27,10 +27,6 @@ end
 # terminal state (3)
 POMDPs.states(pomdp::binaryLifeDetectionPOMDP) = [1, 2, 3]
 
-# prior (uniform)
-POMDPs.initialstate(pomdp::binaryLifeDetectionPOMDP) = DiscreteUniform(1, 2)
-POMDPs.isterminal(pomdp::binaryLifeDetectionPOMDP, s::Int) = (s == 3)
-
 # run sensor i (2+i)
 # declare dead (1) declare alive (2)
 POMDPs.actions(pomdp::binaryLifeDetectionPOMDP) = [1, 2, 3:2+pomdp.inst...]
@@ -42,6 +38,9 @@ POMDPs.stateindex(pomdp::binaryLifeDetectionPOMDP, s::Int) = s
 POMDPs.actionindex(pomdp::binaryLifeDetectionPOMDP,a::Int) = a
 POMDPs.obsindex(pomdp::binaryLifeDetectionPOMDP, s::Int)   = s
 
+# prior (uniform)
+POMDPs.initialstate(pomdp::binaryLifeDetectionPOMDP) = DiscreteUniform(1, 2)
+POMDPs.isterminal(pomdp::binaryLifeDetectionPOMDP, s::Int) = (s == 3)
 POMDPs.discount(pomdp::binaryLifeDetectionPOMDP) = pomdp.discount
 
 function POMDPs.transition(pomdp::binaryLifeDetectionPOMDP, s::Int, a::Int)
@@ -70,14 +69,15 @@ function POMDPs.observation(pomdp::binaryLifeDetectionPOMDP, a::Int,  sp::Int)
     var_name = factor.vars[1].name
     
     # get parent nodes
-    parent_vars = factor.vars[2:end]  # First var is child, rest are parents
+    parent_vars = factor.vars[2:end]  # first var is child, rest are parents
     
-    # Build key with all parent assignments
-    key = Dict(var_name => 2)  # Start with child variable
+    # build key with all parent assignments
+    key = Dict(var_name => 2)  # start with child
     for parent_var in parent_vars
         if parent_var.name == :l
-            key[parent_var.name] = sp  # Life state from POMDP state
+            key[parent_var.name] = sp
         elseif parent_var.name == :a
+            # TODO: what is happening here?
             # Handle biosignature state - you'll need to track this
             key[parent_var.name] = 1  # Or however you track biosignature state
         end

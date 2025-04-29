@@ -60,9 +60,9 @@ plot_decision_tree(tree_data)
 #print(acc_list)
 
 # construct λ pareto plot
-x = range(1, end_λ)
-p1 = scatter(x, reward_list, color=:blue, xlabel="λ", ylabel="Reward Value", title="Reward", label="rewards")
-p2 = scatter(x, acc_list, color=:red, xlabel="λ", ylabel="Accuracy (0 to 1)", title="Accuracy", label="Accuracy")
-plot(p1, p2, layout=(1, 2), size=(800, 400), title="Pareto Frontier")
+#x = range(1, end_λ)
+#p1 = scatter(x, reward_list, color=:blue, xlabel="λ", ylabel="Reward Value", title="Reward", label="rewards")
+#p2 = scatter(x, acc_list, color=:red, xlabel="λ", ylabel="Accuracy (0 to 1)", title="Accuracy", label="Accuracy")
+#Plots.plot(p1, p2, layout=(1, 2), size=(800, 400), title="Pareto Frontier")
 
 # @show_requirements POMDPs.solve(solver, pomdp)

@@ -1,6 +1,8 @@
 using Plots
 using Graphs
 using GraphPlot
+using TikzGraphs
+using TikzPictures
 using Compose
 using Cairo
 using Fontconfig
@@ -16,7 +18,7 @@ function plot_alpha_vectors(policy::AlphaVectorPolicy)
     b = range(0, 1, length=100)
 
     # plot each alpha vector
-    p = plot(title="Alpha Vectors (Piecewise-Linear Value Function)",
+    p = Plots.plot(title="Alpha Vectors (Piecewise-Linear Value Function)",
                xlabel="Belief in L=1", ylabel="Value Function")
 
     for i in 1:num_vectors
@@ -52,20 +54,20 @@ function plot_bayes_net(bn::BayesianNetwork)
 end
 
 function plot_decision_tree(tree_data::Tuple{Vector{String}, Vector{String}, Vector{Tuple{Int64, Int64}}})
-    # nodes = actions (instrument run) + belief (P(life))
-    # edges = observations (biosignature present/absent)
+    # nodes: actions (instrument run) + belief (P(life))
+    # edges: observations (biosignature present/absent)
 
     node_labels, edge_labels, edges = tree_data
-
-    children = [Int[] for _ in 1:length(node_labels)]
+    g = DiGraph(length(node_labels))
 
     for (i, j) in edges
-        push!(children[i], j)
+        add_edge!(g, i, j)
     end
-    println("children: ", children)
 
-    tree = D3Tree(children, text=node_labels, init_expand=true)
-    inchrome(tree)
-    return tree
+    edge_label_dict = Dict(zip(edges, edge_labels))
+    t = TikzGraphs.plot(g, node_labels; edge_labels=edge_label_dict)
+    TikzPictures.save(PDF("graph"), t)
+
+    return g
 end
 
