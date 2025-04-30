@@ -77,9 +77,39 @@ solver = SARSOPSolver(verbose = true, timeout=100)
 policy = solve(solver, pomdp)
 plot_alpha_vectors(policy)
 rewards, accuracy = simulate_policyVLD(pomdp, policy, "SARSOP", 1, true) # SARSOP or greedy
+plot_alpha_vectors_VLD(policy,pomdp, 0)
 
+# get alpha vectors and action map
+alpha_vectors = policy.alphas
+action_map = policy.action_map
 
+num_vectors = size(alpha_vectors, 1)
+b = range(0, 1, length=200)  # Belief in L=1 (life)
+# b = range(1, pomdp.sample, length=200)  # Belief in L=1 (life)
+# b = range(1, pomdp.sampleVolume*pomdp.lifeStates+pomdp.lifeStates, length=200)  # Belief in L=1 (life)
 
+p = plot(title="Alpha Vectors at Sample Volume = $sample",
+         xlabel="Belief in Life (P(L=1))", ylabel="Value",
+         legend=:topright)
+
+for i in 1:num_vectors
+    α = alpha_vectors[i]
+    # get indices for dead and life at this sample volume
+    dead_idx = state_to_stateindex(30, 1)
+    life_idx = state_to_stateindex(30, 2)
+
+    # alpha vector values for this sample
+    α_dead = α[dead_idx]
+    α_life = α[life_idx]
+
+    # compute V(b) = α_life * b + α_dead * (1 - b)
+    V_b = [α_life * b_i + α_dead * (1 - b_i) for b_i in b]
+    plot!(b, V_b, label="α_$i (a=$(action_map[i]))")#,ylim=(-.5, 0))
+end
+
+display(p)
+savefig(p, "alpha_vectors_sample_$sample.png")
+return p
 # # get alpha vectors
 # alpha_vectors = policy.alphas
 # num_states = size(alpha_vectors, 2) 
@@ -115,3 +145,5 @@ rewards, accuracy = simulate_policyVLD(pomdp, policy, "SARSOP", 1, true) # SARSO
 #     end
 # end
 # println("SDFSDFSDF")
+
+
