@@ -71,12 +71,12 @@ pomdp = volumeLifeDetectionPOMDP(
 rewards, accuracy = simulate_policyVLD(pomdp, "policy", "conops", 1, true) # SARSOP or greedy
 
 # # transition(pomdp, 2406, 0)
-# solver = SARSOPSolver(verbose = true, timeout=100)
-# @show_requirements POMDPs.solve(solver, pomdp)
+solver = SARSOPSolver(verbose = true, timeout=100)
+@show_requirements POMDPs.solve(solver, pomdp)
 
-# policy = solve(solver, pomdp)
-# plot_alpha_vectors(policy)
-# rewards, accuracy = simulate_policyVLD(pomdp, policy, "SARSOP", 1, true) # SARSOP or greedy
+policy = solve(solver, pomdp)
+plot_alpha_vectors(policy)
+rewards, accuracy = simulate_policyVLD(pomdp, policy, "SARSOP", 1, true) # SARSOP or greedy
 
 
 

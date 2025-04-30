@@ -16,9 +16,6 @@ include("../src/volumeLD.jl")
 include("../src/common/plotting.jl")
 include("../src/common/simulate.jl")
 
-
-
-num_instruments = 3
 # Bayes Net:
 variable_specs = [(:l, 2), (:h, 2), (:s, 2), (:μ, 2), (:E, 2), (:m, 2), (:n, 2)]
 dependencies = [(:l, :h), (:l, :s), (:l, :μ), (:l, :E), (:l, :m), (:l, :n)]
@@ -49,7 +46,7 @@ none = 0
 
 pomdp = volumeLifeDetectionPOMDP(
     bn=bn,
-    λ=0.5,
+    λ=0.95,
     inst=7,
     sampleVolume=500,
     lifeStates=3,
@@ -73,3 +70,4 @@ solver = SARSOPSolver(verbose = true, timeout=100)
 @show_requirements POMDPs.solve(solver, pomdp)
 
 policy = solve(solver, pomdp)
+plot_alpha_vectors(policy)
