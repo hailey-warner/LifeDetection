@@ -5,11 +5,11 @@ using Printf
 using SARSOP
 using POMDPLinter
 using Distributions
-using Plots
 
 include("../src/bayesNet.jl")
 include("../src/binaryLD.jl")
 include("../src/common/plotting.jl")
+include("../src/common/decision_tree.jl")
 include("../src/common/simulate.jl")
 include("../src/common/utils.jl")
 include("greedy.jl")
@@ -34,35 +34,33 @@ probability_tables = [
 bn = bayes_net(variable_specs, dependencies, probability_tables)
 plot_bayes_net(bn) # save graph
 
+# plot decision tree ##################################################################
+pomdp = binaryLifeDetectionPOMDP(inst=num_instruments, bn=bn, λ=20,  k=[0.1, 0.8, 0.6, 0.2], discount=0.9)
+solver = SARSOPSolver(verbose=true, timeout=100)
+policy = solve(solver, pomdp)
+tree_data = decision_tree(pomdp, policy)
+p1 = plot_decision_tree(tree_data)
+p2 = plot_alpha_vectors(policy)
+#Plots.plot(p1, p2, layout=(1, 2), size=(800, 400), title="SARSOP Policy")
+#######################################################################################
+
+# construct λ pareto plot #############################################################
 reward_list = []
 acc_list = []
-
-end_λ = 1 # 1000
+end_λ = 3
 for λ in range(1, end_λ)
     pomdp = binaryLifeDetectionPOMDP(inst=num_instruments, bn=bn, λ=λ,  k=[0.1, 0.8, 0.6, 0.2], discount=0.9)
     solver = SARSOPSolver(verbose=true, timeout=100)
     policy = solve(solver, pomdp)
-    plot_alpha_vectors(policy)
+    #plot_alpha_vectors(policy)
     rewards, accuracy = simulate_policy(pomdp, policy, "SARSOP", 200, false) # SARSOP or greedy
     push!(reward_list, rewards)
     push!(acc_list, accuracy)
 end
-
-# temporary
-pomdp = binaryLifeDetectionPOMDP(inst=num_instruments, bn=bn, λ=1,  k=[0.1, 0.8, 0.6, 0.2], discount=0.9)
-solver = SARSOPSolver(verbose=true, timeout=100)
-policy = solve(solver, pomdp)
-tree_data = decision_tree(pomdp, policy)
-println(tree_data)
-plot_decision_tree(tree_data)
-
-#print(reward_list)
-#print(acc_list)
-
-# construct λ pareto plot
-#x = range(1, end_λ)
+x = range(1, end_λ)
 #p1 = scatter(x, reward_list, color=:blue, xlabel="λ", ylabel="Reward Value", title="Reward", label="rewards")
 #p2 = scatter(x, acc_list, color=:red, xlabel="λ", ylabel="Accuracy (0 to 1)", title="Accuracy", label="Accuracy")
 #Plots.plot(p1, p2, layout=(1, 2), size=(800, 400), title="Pareto Frontier")
+#######################################################################################
 
 # @show_requirements POMDPs.solve(solver, pomdp)
