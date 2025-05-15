@@ -25,7 +25,7 @@ function simulate_policyVLD(pomdp, policy, type="SARSOP", n_episodes=1,verbose=t
         o_old = 2
         modeAcc = true
         prevAction = 0
-
+        belief_life = pdf(b,o_old)
 
         while !isterminal(pomdp, s) && step ≤ 200  # max 10 steps
 
@@ -40,7 +40,9 @@ function simulate_policyVLD(pomdp, policy, type="SARSOP", n_episodes=1,verbose=t
             
             sp = rand(transition(pomdp, s, a))
             o = rand(observation(pomdp, a, sp))
-            _ , o_state = stateindex_to_state(o, pomdp.lifeStates)  # Save the current state before transitioning 
+            if o != pomdp.sampleVolume*pomdp.lifeStates+pomdp.lifeStates+1
+                _ , o_state = stateindex_to_state(o, pomdp.lifeStates)  # Save the current state before transitioning 
+            end
 
             # Get reward and accumulate total reward
             r = reward(pomdp, s, a, sp)
@@ -48,12 +50,23 @@ function simulate_policyVLD(pomdp, policy, type="SARSOP", n_episodes=1,verbose=t
             
             # format action and observation names
             action_name = a >= pomdp.inst+1 ? (a == pomdp.inst+1 ? "Declare Dead" : "Declare Life") : (a == pomdp.inst ? "Accumulate" : "Sensor $(a)")
-            obs_name = o_state == 1 ? "Negative" : "Positive"
             accu , true_state = stateindex_to_state(s, pomdp.lifeStates)  # Save the current state before transitioning 
-            if true_state == 1 && step > 1
-                o_old += 1
+            if o_old != pomdp.sampleVolume*pomdp.lifeStates+pomdp.lifeStates+1
+                if true_state == 1 && step > 1
+                    o_old += 1
+                end
+            
+                belief_life = pdf(b,o_old)
             end
-            belief_life = pdf(b,o_old)# sum(pdf(b, state_to_stateindex(sample, 2)) for sample in 1:pomdp.sampleVolume)
+            if o != pomdp.sampleVolume*pomdp.lifeStates+pomdp.lifeStates+1
+                obs_name = o_state == 1 ? "Negative" : "Positive"
+                
+            else
+                obs_name = "No Sense"
+                # belief_life = ""
+            end
+            
+            # sum(pdf(b, state_to_stateindex(sample, 2)) for sample in 1:pomdp.sampleVolume)
 
             if verbose
                 # show step details
@@ -63,6 +76,7 @@ function simulate_policyVLD(pomdp, policy, type="SARSOP", n_episodes=1,verbose=t
 
             # update belief
             # if a != pomdp.inst
+            # if o != pomdp.sampleVolume*pomdp.lifeStates+pomdp.lifeStates+1
             b = update(updater, b, a, o)
             o_old = o
             # end

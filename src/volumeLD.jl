@@ -38,12 +38,12 @@ POMDPs.states(pomdp::volumeLifeDetectionPOMDP) =  1: pomdp.sampleVolume*pomdp.li
 # declare dead (1) declare alive (2)
 POMDPs.actions(pomdp::volumeLifeDetectionPOMDP) = [1:pomdp.inst..., pomdp.inst+1, pomdp.inst+2]
 
-# observe biosignature is present (1) or absent (2)
-POMDPs.observations(pomdp::volumeLifeDetectionPOMDP) = 1:pomdp.sampleVolume*pomdp.lifeStates+pomdp.lifeStates #(pomdp.sampleVolume*((2^pomdp.lifeStates)))+(2^pomdp.lifeStates)
+# Extra observation at end which will be null observation
+POMDPs.observations(pomdp::volumeLifeDetectionPOMDP) = 1:pomdp.sampleVolume*pomdp.lifeStates+pomdp.lifeStates+1 #(pomdp.sampleVolume*((2^pomdp.lifeStates)))+(2^pomdp.lifeStates)
 
 POMDPs.stateindex(pomdp::volumeLifeDetectionPOMDP, s::Int) = s
 POMDPs.actionindex(pomdp::volumeLifeDetectionPOMDP,a::Int) = a
-POMDPs.obsindex(pomdp::volumeLifeDetectionPOMDP, s::Int)   = s
+POMDPs.obsindex(pomdp::volumeLifeDetectionPOMDP, o::Int)   = o
 
 
 # TODO: do we want to start with different states?
@@ -68,8 +68,6 @@ function POMDPs.transition(pomdp::volumeLifeDetectionPOMDP, s::Int, a::Int)
     # TODO: When previous action was using an instrument we are in melt mode 
             # Can't accumulate any more things at that point
 
-
-    
     sampleVolume, lifeState = stateindex_to_state(s, pomdp.lifeStates)
     
     # if lifeState == 3
@@ -90,6 +88,19 @@ function POMDPs.transition(pomdp::volumeLifeDetectionPOMDP, s::Int, a::Int)
             # lifeState = rand(1:2)
             sampleVolume += pomdp.surfaceAccRate
 
+            # Always make sure sample Volume can't exceed certain volume
+            if sampleVolume > pomdp.sampleVolume
+                sampleVolume = pomdp.sampleVolume
+            end
+            
+            key = Dict(:l => 1,)  
+            factor = pomdp.bn.factors[1]
+            P_yes = factor.table[key]  
+            s1 = state_to_stateindex(sampleVolume, 1)
+            s2 = state_to_stateindex(sampleVolume, 2)
+
+            return SparseCat([s1, s2], [1 - P_yes, P_yes])
+
         # if we choose to use an instrument, we take away from sampleVolume, assuming we are not choosing to wait for accumulation at this step
         else
             if sampleVolume >= pomdp.sampleUse[a]
@@ -97,13 +108,10 @@ function POMDPs.transition(pomdp::volumeLifeDetectionPOMDP, s::Int, a::Int)
             end
 
         end
-        
-
         # Always make sure sample Volume can't exceed certain volume
         if sampleVolume > pomdp.sampleVolume
             sampleVolume = pomdp.sampleVolume
         end
-
         return Deterministic(state_to_stateindex(sampleVolume, lifeState)) # state (alive/dead) wont change while testing sample
     else
         return Deterministic(state_to_stateindex(sampleVolume, 3)) # switch to terminal state only when we declare alive/dead
@@ -119,17 +127,18 @@ function POMDPs.observation(pomdp::volumeLifeDetectionPOMDP, a::Int,  sp::Int)
 
     # if we already declared alive/dead, observation doesn't matter
     if POMDPs.isterminal(pomdp, sp) #lifeState == 3
-        return SparseCat([ob1, ob2], [0.5,0.5])
+        return Deterministic(pomdp.sampleVolume*pomdp.lifeStates+pomdp.lifeStates+1) #SparseCat([ob1, ob2], [0.5,0.5])
     end
 
     # if we declare alive/dead, observation doesn't matter
     if a == pomdp.inst + 1 || a == pomdp.inst + 2
-        return SparseCat([ob1, ob2], [0.5, 0.5])
+        return Deterministic(pomdp.sampleVolume*pomdp.lifeStates+pomdp.lifeStates+1) #SparseCat([ob1, ob2], [0.5, 0.5])
     end
     
     # not choosing anything
     if a == pomdp.inst #|| sp == 0
-        return SparseCat([ob1, ob2], [0.5, 0.5])
+        return Deterministic(pomdp.sampleVolume*pomdp.lifeStates+pomdp.lifeStates+1) #Deterministic(:null)
+        # return SparseCat([ob1, ob2], [0.5, 0.5])
     end
 
     # map action index to Bayesian network variable (action 3 → A, 4 → P, 5 → C)
@@ -178,7 +187,10 @@ function stateindex_to_state(index::Int, n_lifeStates::Int)
         sampleVolume = div(index,n_lifeStates)
         lifeStates = index%n_lifeStates
     else
-        sampleVolume = div(index,n_lifeStates)-1
+        sampleVolume = div(index,n_lifeStates)
+        if div(index,n_lifeStates) != 0
+            sampleVolume -=1
+        end
         lifeStates = n_lifeStates
     end
     return sampleVolume, lifeStates
