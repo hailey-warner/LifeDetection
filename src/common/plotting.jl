@@ -43,6 +43,7 @@ function plot_decision_tree(tree_data::Tuple{Vector{String}, Dict{Tuple{Int64, I
 
     t = TikzGraphs.plot(g, TikzGraphs.Layouts.Layered(), node_labels, edge_styles=edge_colors,
                          node_style="draw", graph_options="nodes={draw,circle}")
+    # NOTE: delete line '\setmainfont{Latin Modern Math}' to compile
     TikzPictures.save(TikzPictures.TEX("./figures/decision_tree.tex"), t)
     return t
 end
@@ -51,6 +52,7 @@ function plot_bayes_net(bn::BayesianNetwork)
     node_labels = [string(v.name) for v in bn.vars]
     t = TikzGraphs.plot(bn.graph, TikzGraphs.Layouts.Spring(), node_labels,
                         node_style="draw", graph_options="nodes={draw,circle}")
+    # NOTE: delete line '\setmainfont{Latin Modern Math}' to compile           
     TikzPictures.save(TikzPictures.TEX("./figures/bayes_net.tex"), t)
     return t
 end
