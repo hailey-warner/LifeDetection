@@ -7,7 +7,6 @@ using Fontconfig
 using TikzGraphs
 using TikzPictures
 
-
 function plot_alpha_vectors(policy::AlphaVectorPolicy)
     # get alpha vectors
     alpha_vectors = policy.alphas
