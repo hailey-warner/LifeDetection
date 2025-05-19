@@ -7,6 +7,41 @@ using Fontconfig
 using TikzGraphs
 using TikzPictures
 
+function plot_alpha_vectors_VLD(policy::AlphaVectorPolicy, pomdp, sample::Int)
+    # get alpha vectors and action map
+    alpha_vectors = policy.alphas
+    action_map = policy.action_map
+
+    num_vectors = size(alpha_vectors, 1)
+    b = range(0, 1, length=200)  # Belief in L=1 (life)
+    # b = range(1, pomdp.sample, length=200)  # Belief in L=1 (life)
+    # b = range(1, pomdp.sampleVolume*pomdp.lifeStates+pomdp.lifeStates, length=200)  # Belief in L=1 (life)
+
+    p = plot(title="Alpha Vectors at Sample Volume = $sample",
+             xlabel="Belief in Life (P(L=1))", ylabel="Value",
+             legend=:topright)
+
+    for i in 1:num_vectors
+        α = alpha_vectors[i]
+        # get indices for dead and life at this sample volume
+        dead_idx = state_to_stateindex(sample, 1)
+        life_idx = state_to_stateindex(sample, 2)
+
+        # alpha vector values for this sample
+        α_dead = α[dead_idx]
+        α_life = α[life_idx]
+
+        # compute V(b) = α_life * b + α_dead * (1 - b)
+        V_b = [α_life * b_i + α_dead * (1 - b_i) for b_i in b]
+        plot!(b, V_b, label="α_$i (a=$(action_map[i]))")
+    end
+
+    display(p)
+    savefig(p, "alpha_vectors_sample_$sample.png")
+    return p
+end
+
+
 function plot_alpha_vectors(policy::AlphaVectorPolicy)
     # get alpha vectors
     alpha_vectors = policy.alphas
