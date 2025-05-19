@@ -1,4 +1,4 @@
-using POMDPs
+using POMDPs # TODO: check if i can delete this
 using POMDPTools
 
 struct volumeLifeDetectionPOMDP <: POMDP{Int, Int, Int}  # POMDP{State, Action, Observation}

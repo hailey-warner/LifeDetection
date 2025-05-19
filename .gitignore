@@ -1,2 +1,10 @@
 .DS_Store
 *.png
+*.pdf
+*.tex
+*.gz
+*.log
+*.aux
+model.pomdpx
+policy.out
+figures/

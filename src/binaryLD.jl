@@ -1,12 +1,9 @@
-using POMDPs
-using POMDPTools
-
 struct binaryLifeDetectionPOMDP <: POMDP{Int, Int, Int}  # POMDP{State, Action, Observation}
-    inst::Int # number of instruments
+    inst::Int           # number of instruments
     bn::BayesianNetwork # Bayesian network
-    k::Vector{Float64} # cost of observations
-    λ::Int  # cost of declaring alive/dead
-    b::Float64 # belief state (probability of life)
+    k::Vector{Float64}  # cost of observations/instruments
+    λ::Int              # cost of declaring alive/dead
+    b::Float64          # belief state P(life)
     discount::Float64
 end
 
@@ -26,7 +23,6 @@ end
 # alive (2)
 # terminal state (3)
 POMDPs.states(pomdp::binaryLifeDetectionPOMDP) = [1, 2, 3]
-
 # prior (uniform)
 POMDPs.initialstate(pomdp::binaryLifeDetectionPOMDP) = DiscreteUniform(1, 2)
 POMDPs.isterminal(pomdp::binaryLifeDetectionPOMDP, s::Int) = (s == 3)
@@ -53,7 +49,6 @@ function POMDPs.transition(pomdp::binaryLifeDetectionPOMDP, s::Int, a::Int)
 end
 
 function POMDPs.observation(pomdp::binaryLifeDetectionPOMDP, a::Int,  sp::Int)
-
     # if we declare alive/dead, observation doesn't matter
     if POMDPs.isterminal(pomdp, sp) || a <= 2
         return SparseCat([1, 2], [0.5, 0.5])
@@ -69,15 +64,16 @@ function POMDPs.observation(pomdp::binaryLifeDetectionPOMDP, a::Int,  sp::Int)
     factor = pomdp.bn.factors[instrument_index+1]
     var_name = factor.vars[1].name
     
-    # get parent nodes
-    parent_vars = factor.vars[2:end]  # First var is child, rest are parents
+    # get parent nodes (first var is child, rest are parents)
+    parent_vars = factor.vars[2:end]
     
-    # Build key with all parent assignments
-    key = Dict(var_name => 2)  # Start with child variable
+    # build key with all parent assignments
+    key = Dict(var_name => 2)  # start with child
     for parent_var in parent_vars
         if parent_var.name == :l
-            key[parent_var.name] = sp  # Life state from POMDP state
+            key[parent_var.name] = sp
         elseif parent_var.name == :a
+            # TODO: what is happening here?
             # Handle biosignature state - you'll need to track this
             key[parent_var.name] = 1  # Or however you track biosignature state
         end
@@ -117,15 +113,14 @@ function expected_belief_change(pomdp::binaryLifeDetectionPOMDP, a::Int)
 
     exp_change = abs(pomdp.b - P_L_o)
     #println("exp_change: ", exp_change)
-    
     return exp_change
 end
 
 function POMDPs.reward(pomdp::binaryLifeDetectionPOMDP, s::Int, a::Int)
-    if a == 1  # Declaring "no life"
-        return s == 1 ? 1.0 : -pomdp.λ  # Reward if correct, penalty if wrong
-    elseif a == 2  # Declaring "life exists"
-        return s == 2 ? 1.0 : -pomdp.λ  # Reward if correct, penalty if wrong
+    if a == 1  # declaring dead
+        return s == 1 ? 1.0 : -pomdp.λ  # reward if correct, penalty if wrong
+    elseif a == 2  # declaring alive
+        return s == 2 ? 1.0 : -pomdp.λ  # reward if correct, penalty if wrong
     else  # Sensor action
         exp_change = expected_belief_change(pomdp, a)
         return -pomdp.k[a-2] + exp_change  # Cost of using sensor plus expected information gain
