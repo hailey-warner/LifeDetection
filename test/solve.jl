@@ -6,7 +6,7 @@ using SARSOP
 using POMDPLinter
 using Distributions
 
-include("../src/bayesNet.jl")
+include("../src/bayesNet_old.jl")
 include("../src/binaryLD.jl")
 include("../src/common/plotting.jl")
 include("../src/common/simulate.jl")

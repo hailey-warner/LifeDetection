@@ -1,24 +1,43 @@
+using BayesNets
+using Distributions
+using Plots
 
-include("common/utils.jl")
+bn = BayesNet()
 
-function bayes_net(variable_specs, dependencies, probability_tables)
-    # Create variables
-    vars = [Variable(name, states) for (name, states) in variable_specs]
-    var_dict = Dict(var.name => var for var in vars)
-    
-    # Create factors
-    factors = []
-    for (vars_in_factor, prob_table) in probability_tables
-        factor_vars = [var_dict[v] for v in vars_in_factor]
-        push!(factors, Factor(factor_vars, FactorTable(prob_table...)))
-    end
-    
-    # Create graph
-    graph = SimpleDiGraph(length(vars))
-    for (parent, child) in dependencies
-        add_edge!(graph, findfirst(x -> x.name == parent, vars), findfirst(x -> x.name == child, vars))
-    end
-    
-    # Return Bayesian Network
-    return BayesianNetwork(vars, factors, graph)
-end
+# life: Boolean
+push!(bn, StaticCPD(:l, Categorical([0.9,0.1]))) # null hypothesis H0
+
+# polyelectrolyte: Boolean                           l=0             l=1
+push!(bn, CategoricalCPD{Bernoulli}(:pe, [:l], [2], [Bernoulli(0.1), Bernoulli(0.9)]))
+
+# chirality: R -> [0, 1]
+push!(bn, CategoricalCPD{Beta}(:ch, [:l], [2], [Beta(1,1), Beta(4,1)]))
+
+# molecular assembly index: Boolean
+push!(bn, CategoricalCPD{Bernoulli}(:ma, [:l], [2], [Bernoulli(0.1), Bernoulli(0.9)]))
+
+# amino acid abundance: Z -> [0, 22]
+w_no = exp.(-0.5.*0:22)
+p_no = w_no ./ sum(w_no)
+w_yes = collect(range(0, stop=0.8, length=23))
+p_yes = w_yes ./ sum(w_yes)
+push!(bn, CategoricalCPD{Categorical}(:aa, [:l], [2], [Categorical(p_no), Categorical(p_yes)]))
+
+# cell membrane: Boolean
+push!(bn, CategoricalCPD{Bernoulli}(:cm, [:l], [2], [Bernoulli(0.1), Bernoulli(0.9)]))
+
+# cell autofluorescence: R -> [0, 1]
+push!(bn, CategoricalCPD{Beta}(:af, [:l], [2], [Beta(1,1), Beta(4,1)]))
+
+# pH: R -> [1, 14] ***NOT CORRECT DIST***
+#push!(bn, CategoricalCPD{Bernoulli}(:ph, [:ch, :pe], [2,2], [Bernoulli(0.1), Bernoulli(0.2), Bernoulli(1.0), Bernoulli(0.4)]))
+
+# redox potential: R -> [-0.5, 0.0] [V]
+push!(bn, CategoricalCPD{UnivariateDistribution}(:r, [:af], [2], [Uniform(-0.5, 0.0), LocationScale(-0.5, 0.5, Beta(2, 1))]))
+
+# salinity: R -> [0, 1]
+push!(bn, CategoricalCPD{Beta}(:sal, [:pe], [2], [Beta(1,1), Beta(1,2)]))
+
+# CHNOPS: R -> [0, 1]
+push!(bn, CategoricalCPD{Beta}(:chnops, [:ma], [2], [Beta(1,1), Beta(4,1)]))
+
