@@ -78,7 +78,10 @@ function simulate_policyVLD(pomdp, policy, type="SARSOP", n_episodes=1,verbose=t
             # if a != pomdp.inst
             # if o != pomdp.sampleVolume*pomdp.lifeStates+pomdp.lifeStates+1
             b = update(updater, b, a, o)
-            o_old = o
+
+            if o != pomdp.sampleVolume*pomdp.lifeStates+pomdp.lifeStates+1
+                o_old = o
+            end
             # end
             s = sp
             step += 1
