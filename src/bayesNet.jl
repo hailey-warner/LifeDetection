@@ -33,7 +33,7 @@ push!(bn, CategoricalCPD{Beta}(:af, [:l], [2], [Beta(1,1), Beta(4,1)]))
 #push!(bn, CategoricalCPD{Bernoulli}(:ph, [:ch, :pe], [2,2], [Bernoulli(0.1), Bernoulli(0.2), Bernoulli(1.0), Bernoulli(0.4)]))
 
 # redox potential: R -> [-0.5, 0.0] [V]
-push!(bn, CategoricalCPD{UnivariateDistribution}(:r, [:af], [2], [Uniform(-0.5, 0.0), LocationScale(-0.5, 0.5, Beta(2, 1))]))
+push!(bn, CategoricalCPD{UnivariateDistribution}(:r, [:af], [2], [Distributions.Uniform(-0.5, 0.0), LocationScale(-0.5, 0.5, Beta(2, 1))]))
 
 # salinity: R -> [0, 1]
 push!(bn, CategoricalCPD{Beta}(:sal, [:pe], [2], [Beta(1,1), Beta(1,2)]))
@@ -41,3 +41,9 @@ push!(bn, CategoricalCPD{Beta}(:sal, [:pe], [2], [Beta(1,1), Beta(1,2)]))
 # CHNOPS: R -> [0, 1]
 push!(bn, CategoricalCPD{Beta}(:chnops, [:ma], [2], [Beta(1,1), Beta(4,1)]))
 
+# ...existing code...
+result = infer(GibbsSamplingNodewise(),bn, :l, Dict(:aa => 5, :cm => 1, :ch => 1))
+println(result)
+# ...existing code...
+
+typeof(bn)
