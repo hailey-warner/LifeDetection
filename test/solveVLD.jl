@@ -35,7 +35,7 @@ surfaceAccRate = 10 # 270 μL per day
 
 pomdp = volumeLifeDetectionPOMDP(
             bn=bn, # inside /src/bayesnet_discrete.jl
-            λ=0.5, 
+            λ=0.995, 
             inst=7, # one extra for not choosing anything
             sampleVolume=300, 
             lifeStates = 3,
@@ -52,5 +52,5 @@ solver = SARSOPSolver(verbose = true, timeout=100)
 
 policy = solve(solver, pomdp)
 plot_alpha_vectors(policy)
-rewards, accuracy = simulate_policyVLD(pomdp, policy, "SARSOP", 1, true) # SARSOP or conops or greedy
+rewards, accuracy = simulate_policyVLD(pomdp, policy, "SARSOP", 10, true) # SARSOP or conops or greedy
 plot_alpha_vectors_VLD(policy,pomdp, 0)

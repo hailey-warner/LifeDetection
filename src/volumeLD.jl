@@ -159,6 +159,33 @@ function POMDPs.observation(pomdp::volumeLifeDetectionPOMDP, a::Int,  sp::Int)
     return SparseCat([ob1, ob2], [p_life[1], p_life[2]])
 end
 
+function expected_belief_change(pomdp::volumeLifeDetectionPOMDP, a::Int)
+    if a >= pomdp.inst  # declare alive/dead
+        return 0.0
+    end
+
+    # Map action to biosignature node in Bayesian network
+    # get probabilities from Bayesian network CPT
+    factor = pomdp.bn.factors[idx]
+    var_name = factor.vars[1].name
+
+    # P(o|L) and P(o|!L)
+    P_o_alive = factor.table[Dict(var_name => 2, :l => 2)]
+    P_o_dead = factor.table[Dict(var_name => 2, :l => 1)]
+
+    # compute evidence P(o) 
+    P_o = P_o_alive * pomdp.b + P_o_dead * (1 - pomdp.b)
+
+    # compute posterior P(L|o)
+    P_L_o = (P_o_alive * pomdp.b) / P_o 
+
+    exp_change = abs(pomdp.b - P_L_o)
+    #println("exp_change: ", exp_change)
+
+    return exp_change
+end
+
+
 function POMDPs.reward(pomdp::volumeLifeDetectionPOMDP, s::Int, a::Int) #, b::Vector{Float64})
     if a == pomdp.inst + 1  # Declaring "no life"
         return s == 1 ? 0 : -pomdp.λ  # No reward if correct, penalty if wrong
