@@ -17,7 +17,7 @@ function plot_alpha_vectors_VLD(policy::AlphaVectorPolicy, pomdp, sample::Int)
     # b = range(1, pomdp.sample, length=200)  # Belief in L=1 (life)
     # b = range(1, pomdp.sampleVolume*pomdp.lifeStates+pomdp.lifeStates, length=200)  # Belief in L=1 (life)
 
-    p = plot(title="Alpha Vectors at Sample Volume = $sample",
+    p = Plots.plot(title="Alpha Vectors at Sample Volume = $sample",
              xlabel="Belief in Life (P(L=1))", ylabel="Value",
              legend=:topright)
 
@@ -62,6 +62,9 @@ function plot_alpha_vectors(policy::AlphaVectorPolicy)
         # plot each alpha vector as a line
         # note : if action i isn't present, it means running instrument i was not optimal.
         plot!(b, V_b, label="α_$i (a=$(policy.action_map[i]))")
+    end
+    if !isdir("./figures")
+        mkpath("./figures")
     end
     savefig(p, "./figures/alpha_vectors.png")
     return p

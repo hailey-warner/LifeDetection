@@ -88,7 +88,7 @@ b = range(0, 1, length=200)  # Belief in L=1 (life)
 # b = range(1, pomdp.sample, length=200)  # Belief in L=1 (life)
 # b = range(1, pomdp.sampleVolume*pomdp.lifeStates+pomdp.lifeStates, length=200)  # Belief in L=1 (life)
 
-p = plot(title="Alpha Vectors at Sample Volume = $sample",
+p = Plots.plot(title="Alpha Vectors at Sample Volume = $sample",
          xlabel="Belief in Life (P(L=1))", ylabel="Value",
          legend=:topright)
 
