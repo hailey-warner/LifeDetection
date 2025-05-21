@@ -85,7 +85,8 @@ function plot_decision_tree(tree_data::Tuple{Vector{String}, Dict{Tuple{Int64, I
     return t
 end
 
-function plot_bayes_net(bn::BayesianNetwork)
+# TODO: need to fix this
+function plot_bayes_net(bn::DiscreteBayesNet)
     node_labels = [string(v.name) for v in bn.vars]
     t = TikzGraphs.plot(bn.graph, TikzGraphs.Layouts.Spring(), node_labels,
                         node_style="draw", graph_options="nodes={draw,circle}")

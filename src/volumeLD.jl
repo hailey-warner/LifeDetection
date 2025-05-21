@@ -2,7 +2,7 @@ using POMDPs # TODO: check if i can delete this
 using POMDPTools
 
 struct volumeLifeDetectionPOMDP <: POMDP{Int, Int, Int}  # POMDP{State, Action, Observation}
-    bn::BayesianNetwork # Bayesian Network,
+    bn::DiscreteBayesNet # Bayesian Network,
     λ::Float64    
     inst::Int64 # number of instruments (child nodes)
     sampleVolume::Int64
@@ -16,7 +16,7 @@ end
 
 # Custom constructor to handle dynamic initialization
 function volumeLifeDetectionPOMDP(;
-    bn::BayesianNetwork, # Bayesian Network,
+    bn::DiscreteBayesNet, # Bayesian Network,
     λ::Float64,    
     inst::Int64 = 7, # number of instruments / not using instrument
     sampleVolume::Int64 = 500,
@@ -39,7 +39,7 @@ POMDPs.states(pomdp::volumeLifeDetectionPOMDP) =  1: pomdp.sampleVolume*pomdp.li
 POMDPs.actions(pomdp::volumeLifeDetectionPOMDP) = [1:pomdp.inst..., pomdp.inst+1, pomdp.inst+2]
 
 # Extra observation at end which will be null observation
-POMDPs.observations(pomdp::volumeLifeDetectionPOMDP) = 1:pomdp.sampleVolume*pomdp.lifeStates+pomdp.lifeStates+1 #(pomdp.sampleVolume*((2^pomdp.lifeStates)))+(2^pomdp.lifeStates)
+POMDPs.observations(pomdp::volumeLifeDetectionPOMDP) = 1: pomdp.sampleVolume*pomdp.lifeStates+pomdp.lifeStates+1 #(pomdp.sampleVolume*((2^pomdp.lifeStates)))+(2^pomdp.lifeStates)
 
 POMDPs.stateindex(pomdp::volumeLifeDetectionPOMDP, s::Int) = s
 POMDPs.actionindex(pomdp::volumeLifeDetectionPOMDP,a::Int) = a
@@ -93,9 +93,7 @@ function POMDPs.transition(pomdp::volumeLifeDetectionPOMDP, s::Int, a::Int)
                 sampleVolume = pomdp.sampleVolume
             end
             
-            key = Dict(:l => 1,)  
-            factor = pomdp.bn.factors[1]
-            P_yes = factor.table[key]  
+            P_yes = bn.cpds[1].distributions[1].p[2]
             s1 = state_to_stateindex(sampleVolume, 1)
             s2 = state_to_stateindex(sampleVolume, 2)
 
@@ -126,37 +124,39 @@ function POMDPs.observation(pomdp::volumeLifeDetectionPOMDP, a::Int,  sp::Int)
     ob2 = state_to_stateindex(sampleVolume, 2)
 
     # if we already declared alive/dead, observation doesn't matter
-    if POMDPs.isterminal(pomdp, sp) #lifeState == 3
-        return Deterministic(pomdp.sampleVolume*pomdp.lifeStates+pomdp.lifeStates+1) #SparseCat([ob1, ob2], [0.5,0.5])
-    end
-
     # if we declare alive/dead, observation doesn't matter
-    if a == pomdp.inst + 1 || a == pomdp.inst + 2
-        return Deterministic(pomdp.sampleVolume*pomdp.lifeStates+pomdp.lifeStates+1) #SparseCat([ob1, ob2], [0.5, 0.5])
-    end
-    
     # not choosing anything
-    if a == pomdp.inst #|| sp == 0
-        return Deterministic(pomdp.sampleVolume*pomdp.lifeStates+pomdp.lifeStates+1) #Deterministic(:null)
-        # return SparseCat([ob1, ob2], [0.5, 0.5])
+    if POMDPs.isterminal(pomdp, sp) || a == pomdp.inst + 1 || a == pomdp.inst + 2 || a == pomdp.inst
+        return Deterministic(pomdp.sampleVolume*pomdp.lifeStates+pomdp.lifeStates+1 ) #SparseCat([ob1, ob2], [0.5,0.5])
     end
 
-    # map action index to Bayesian network variable (action 3 → A, 4 → P, 5 → C)
-    instrument_index = a  # convert action number to variable index in BN
-    if instrument_index > length(pomdp.bn.factors)
-        error("Invalid instrument action: $a")
-    end
-    #print(a)
-    # get the corresponding conditional probability P(O|L), or P(biosignature present|alive/dead)
-    factor = pomdp.bn.factors[instrument_index+1]
-    var_name = pomdp.bn.factors[instrument_index+1].vars[1].name
-    key = Dict(var_name => 2, :l => lifeState) #sp)  
-    #print(key)
+    # Sample first, then do infer to get posterior?
 
-    P_yes = factor.table[key] # Probability of "yes" observation for action a (a=2 means detected)
-    
-    # Return a probability distribution over the two observations (1 = no, 2 = yes)
-    return SparseCat([ob1, ob2], [1 - P_yes, P_yes])
+    # Instrument Action to sample characteristics:
+    action_to_cpds = Dict(
+        1 => [3, 5, 6, 10],   # HRMS >> Salinity (index 3), Path Complexity Index (5), CHNOPS (index 6), and redox (index 10)
+        2 => [4, 7],       # SMS >> Chirality (index 4), Amino Acid Abundance (7)
+        3 => [4, 7],       # μCE_LI >> Chirality (index 4), Amino Acid Abundance (7)
+        4 => [3, 6],       # ESA >> Salinity (index 3), CHNOPS (index 6)
+        5 => [8, 9],      # microscope >> Cell Membrane (8), autofluorescence (9)
+        6 => [2],      # nanopore >> Polyelectrolyte (index 2)
+    )
+    # Get the specific sample indicies for action selected
+    cpd_indices = action_to_cpds[a]
+    evidence_dict = Dict()  # Start with life state as evidence
+
+    # For each CPD index, sample and add to evidence
+    for idx in cpd_indices
+        posterior = infer(bn, bn.cpds[idx].target, evidence=Assignment(Dict(:l => lifeState)))# Start with life state as evidence
+        sample = rand(Categorical(convert(DataFrame, posterior)[!,"potential"]))
+        evidence_dict[bn.cpds[idx].target] = sample
+    end
+
+    # All this is saying is: bn.cpds[1].target = :l
+    p_life = infer(bn, bn.cpds[1].target, evidence=Assignment(evidence_dict))
+   
+    # Return a probability distribution over the new posterior of life (1 = no, 2 = yes)
+    return SparseCat([ob1, ob2], [p_life[1], p_life[2]])
 end
 
 function POMDPs.reward(pomdp::volumeLifeDetectionPOMDP, s::Int, a::Int) #, b::Vector{Float64})
