@@ -23,6 +23,7 @@ function simulate_policyVLD(pomdp, policy, type="SARSOP", n_episodes=1,verbose=t
         true_state = 1
         acc = 0
         o_old = 2
+        temp_o_old = 0
         modeAcc = true
         prevAction = 0
         belief_life = pdf(b,o_old)
@@ -80,13 +81,15 @@ function simulate_policyVLD(pomdp, policy, type="SARSOP", n_episodes=1,verbose=t
             b = update(updater, b, a, o)
 
             if o != pomdp.sampleVolume*pomdp.lifeStates+pomdp.lifeStates+1
-                o_old = o
+                temp_o_old = o
             end
+            o_old = o
+            
             # end
             s = sp
             step += 1
         end
-        acc = 1-abs(true_state-1-pdf(b,o_old))
+        acc = 1-abs(true_state-1-pdf(b,temp_o_old))
         push!(total_episode_rewards, total_reward)
         push!(accuracy, acc)
     end
