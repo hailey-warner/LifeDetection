@@ -6,15 +6,13 @@ using SARSOP
 using POMDPLinter
 using Distributions
 using Plots
-# using Statistics, Clustering, Plots
-
+# using Statistics, Clustering
 
 # include("../src/common/utils.jl")
 # include("../src/bayesNet_old.jl")
-include("../src/bayesnet_discrete.jl")
+include("../src/bayesnet.jl")
 include("../src/volumeLD.jl")
-include("CONOPsOrbiter.jl")
-
+include("conops.jl")
 include("../src/common/plotting.jl")
 include("../src/common/simulate.jl")
 
@@ -32,7 +30,6 @@ nanopore = 100 #10000 # μL # 10  # mL cell like morphologies
 none = 0
 surfaceAccRate = 10 # 270 μL per day
 
-
 pomdp = volumeLifeDetectionPOMDP(
             bn=bn, # inside /src/bayesnet_discrete.jl
             λ=0.995, 
@@ -43,14 +40,16 @@ pomdp = volumeLifeDetectionPOMDP(
             sampleUse = [HRMS, SMS, μCE_LIF, ESA, microscope, nanopore, none],
             discount=0.9)
 
-# Running CONOPS:
-rewards, accuracy = simulate_policyVLD(pomdp, "policy", "conops", 1, true) # SARSOP or conops or greedy
+# Running CONOPs
+rewards, accuracy, belief_hist, action_hist = simulate_policyVLD(pomdp, "policy", "conops", n_episodes=1, verbose=true)
+#println("belief history: ", belief_hist)
+#println("action history: ", action_hist)
+plot_belief_over_time(belief_hist, action_hist, pomdp=pomdp)
 
 # Running SARSOP
-solver = SARSOPSolver(verbose = true, timeout=100)
+solver = SARSOPSolver(verbose=true, timeout=100)
 @show_requirements POMDPs.solve(solver, pomdp)
 
 policy = solve(solver, pomdp)
-plot_alpha_vectors(policy)
-rewards, accuracy = simulate_policyVLD(pomdp, policy, "SARSOP", 10, true) # SARSOP or conops or greedy
-plot_alpha_vectors_VLD(policy,pomdp, 0)
+rewards, accuracy, history = simulate_policyVLD(pomdp, policy, "SARSOP", n_episodes=10, verbose=true)
+plot_alpha_vectors_VLD(policy, sample=0)

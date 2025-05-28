@@ -123,9 +123,7 @@ function POMDPs.observation(pomdp::volumeLifeDetectionPOMDP, a::Int,  sp::Int)
     ob1 = state_to_stateindex(sampleVolume, 1)
     ob2 = state_to_stateindex(sampleVolume, 2)
 
-    # if we already declared alive/dead, observation doesn't matter
-    # if we declare alive/dead, observation doesn't matter
-    # not choosing anything
+    # if we delcare (or already declared) alive/dead, observation doesn't matter
     if POMDPs.isterminal(pomdp, sp) || a == pomdp.inst + 1 || a == pomdp.inst + 2 || a == pomdp.inst
         return Deterministic(pomdp.sampleVolume*pomdp.lifeStates+pomdp.lifeStates+1 ) #SparseCat([ob1, ob2], [0.5,0.5])
     end
@@ -134,36 +132,36 @@ function POMDPs.observation(pomdp::volumeLifeDetectionPOMDP, a::Int,  sp::Int)
 
     # Instrument Action to sample characteristics:
     action_to_cpds = Dict(
-        1 => [3, 5, 6, 10],   # HRMS >> Salinity (index 3), Path Complexity Index (5), CHNOPS (index 6), and redox (index 10)
-        2 => [4, 7],       # SMS >> Chirality (index 4), Amino Acid Abundance (7)
-        3 => [4, 7],       # μCE_LI >> Chirality (index 4), Amino Acid Abundance (7)
-        4 => [3, 6],       # ESA >> Salinity (index 3), CHNOPS (index 6)
-        5 => [8, 9],      # microscope >> Cell Membrane (8), autofluorescence (9)
-        6 => [2],      # nanopore >> Polyelectrolyte (index 2)
+        1 => [:C7, :C5, :C8, :C10],   # HRMS
+        2 => [:C6, :C5],              # SMS
+        3 => [:C6, :C5],              # μCE_LI
+        4 => [:C7, :C8],              # ESA
+        5 => [:C2, :C3],              # microscope
+        6 => [:C1]                    # nanopore
     )
     # Get the specific sample indicies for action selected
-    cpd_indices = action_to_cpds[a]
-    evidence_dict = Dict()  # Start with life state as evidence
+    cpd_indices = [bn.name_to_index[var] for var in action_to_cpds[a]]
+    evidence_dict = Dict()
 
     # For each CPD index, sample and add to evidence
     for idx in cpd_indices
-        posterior = infer(bn, bn.cpds[idx].target, evidence=Assignment(Dict(:l => lifeState)))# Start with life state as evidence
+        posterior = infer(bn, bn.cpds[idx].target, evidence=Assignment(Dict(:C0 => lifeState))) # Start with life state as evidence
         sample = rand(Categorical(convert(DataFrame, posterior)[!,"potential"]))
         evidence_dict[bn.cpds[idx].target] = sample
     end
 
     # All this is saying is: bn.cpds[1].target = :l
+    # evidence -> infer -> posterior
     p_life = infer(bn, bn.cpds[1].target, evidence=Assignment(evidence_dict))
    
     # Return a probability distribution over the new posterior of life (1 = no, 2 = yes)
     return SparseCat([ob1, ob2], [p_life[1], p_life[2]])
 end
 
-function expected_belief_change(pomdp::volumeLifeDetectionPOMDP, a::Int)
+function expected_belief_change(pomdp::volumeLifeDetectionPOMDP, a::Int, prior)
     if a >= pomdp.inst  # declare alive/dead
         return 0.0
     end
-
     # Map action to biosignature node in Bayesian network
     # get probabilities from Bayesian network CPT
     factor = pomdp.bn.factors[idx]
@@ -180,29 +178,28 @@ function expected_belief_change(pomdp::volumeLifeDetectionPOMDP, a::Int)
     P_L_o = (P_o_alive * pomdp.b) / P_o 
 
     exp_change = abs(pomdp.b - P_L_o)
-    #println("exp_change: ", exp_change)
+    println("exp_change: ", exp_change)
 
     return exp_change
 end
 
 
-function POMDPs.reward(pomdp::volumeLifeDetectionPOMDP, s::Int, a::Int) #, b::Vector{Float64})
-    if a == pomdp.inst + 1  # Declaring "no life"
-        return s == 1 ? 0 : -pomdp.λ  # No reward if correct, penalty if wrong
-    elseif a == pomdp.inst + 2  # Declaring "life exists"
-        return s == 2 ? 0 : -pomdp.λ  # No reward if correct, penalty if wrong
-    else  # Sensor action
-        #prior_life = b[2]  # Probability of life from current belief state
-        #exp_change = expected_belief_change(pomdp, a, prior_life)
+function POMDPs.reward(pomdp::volumeLifeDetectionPOMDP, s::Int, a::Int)#, b::Vector{Float64})
+    sampleVolume, lifeState = stateindex_to_state(s, pomdp.lifeStates)
 
-        sampleVolume, lifeState = stateindex_to_state(s, pomdp.lifeStates)
-
-        if sampleVolume < pomdp.sampleUse[a]
-            return -10000
-        end
-        # more you're wasting the worse it is
-        return -(1 - pomdp.λ)*(sampleVolume/pomdp.sampleVolume)
-        # -(1 - pomdp.λ)*(sampleVolume/pomdp.sampleVolume)# + exp_change  # Cost of using sensor multipled by lambda factor plus expected information gain
+    if a == pomdp.inst + 1                   # declare alive
+        return s == 1 ? 0 : -pomdp.λ         # penalize if wrong
+    elseif a == pomdp.inst + 2               # declare dead
+        return s == 2 ? 0 : -pomdp.λ         # penalize if wrong
+    elseif sampleVolume < pomdp.sampleUse[a] # instrument action
+        return -10000                        # invalid
+    else                                     # instrument action
+        # rho-POMDP: reward expected change in belief / information gain
+        #prior = b[2]
+        #exp_change = expected_belief_change(pomdp, a, prior)
+        
+        # penalize wasting sample volume
+        return -(1 - pomdp.λ)*(sampleVolume/pomdp.sampleVolume) #+ exp_change 
     end
 end
 
@@ -210,9 +207,9 @@ function state_to_stateindex(sampleVolume::Int, lifeStates::Int)
     return (sampleVolume-1)*3+lifeStates+3
 end
 function stateindex_to_state(index::Int, n_lifeStates::Int)
-    if index%n_lifeStates != 0
+    if index % n_lifeStates != 0
         sampleVolume = div(index,n_lifeStates)
-        lifeStates = index%n_lifeStates
+        lifeStates = index % n_lifeStates
     else
         sampleVolume = div(index,n_lifeStates)
         if div(index,n_lifeStates) != 0

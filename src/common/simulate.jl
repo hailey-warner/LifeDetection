@@ -1,4 +1,4 @@
-function simulate_policyVLD(pomdp, policy, type="SARSOP", n_episodes=1,verbose=true)
+function simulate_policyVLD(pomdp, policy, type="SARSOP"; n_episodes=1,verbose=true)
     
     if verbose
         println("--------------------------------START EPISODES---------------------------------")
@@ -6,6 +6,8 @@ function simulate_policyVLD(pomdp, policy, type="SARSOP", n_episodes=1,verbose=t
 
     total_episode_rewards = []
     accuracy = []
+    belief_hist = []
+    action_hist = []
 
     for episode in range(1, n_episodes)
 
@@ -78,6 +80,8 @@ function simulate_policyVLD(pomdp, policy, type="SARSOP", n_episodes=1,verbose=t
             # update belief
             # if a != pomdp.inst
             # if o != pomdp.sampleVolume*pomdp.lifeStates+pomdp.lifeStates+1
+            push!(belief_hist, pdf(b, 2))  # state 2 --> P(life = 1)
+            push!(action_hist, a)
             b = update(updater, b, a, o)
 
             if o != pomdp.sampleVolume*pomdp.lifeStates+pomdp.lifeStates+1
@@ -97,7 +101,7 @@ function simulate_policyVLD(pomdp, policy, type="SARSOP", n_episodes=1,verbose=t
     println("--------------------------------END EPISODES---------------------------------")
     println("Average Rewards:", mean(total_episode_rewards))
 
-    return mean(total_episode_rewards), mean(accuracy)
+    return mean(total_episode_rewards), mean(accuracy), belief_hist, action_hist
 end
 
 function decision_tree(pomdp, policy; max_depth=3)
@@ -109,23 +113,21 @@ function decision_tree(pomdp, policy; max_depth=3)
     b0 = initialize_belief(updater, initialstate(pomdp))
     
     function traverse(b, parent_index::Union{Int,Nothing}=nothing, edge_label::Union{String,Nothing}=nothing, depth=1)
-        # Determine action from the policy
         a = action(policy, b)
         b_val = pdf(b, 1)
-        #println("tree action: ", a)
-        #println("tree belief: ", b_val)
+
         action_name = a ≤ 2 ? (a == 1 ? "Declare Dead" : "Declare Life") : "Sensor $(a - 2)"
         label = "Action: $(action_name)\nBelief: $(b_val)"
         push!(node_labels, label)
         current_index = length(node_labels)
         
-        # Record the edge if a parent exists.
+        # record the edge if a parent exists
         if parent_index !== nothing && edge_label !== nothing
             push!(edge_labels, edge_label)
             push!(edges, (parent_index, current_index))
         end
         
-        # Stop if we've reached max depth or if the action is terminal.
+        # stop if we've reached max depth or if the action is terminal
         if depth >= max_depth || a ≤ 2
             return
         end

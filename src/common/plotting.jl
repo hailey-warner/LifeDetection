@@ -7,7 +7,7 @@ using Fontconfig
 using TikzGraphs
 using TikzPictures
 
-function plot_alpha_vectors_VLD(policy::AlphaVectorPolicy, pomdp, sample::Int)
+function plot_alpha_vectors_VLD(policy::AlphaVectorPolicy; sample::Int=0)
     # get alpha vectors and action map
     alpha_vectors = policy.alphas
     action_map = policy.action_map
@@ -37,10 +37,9 @@ function plot_alpha_vectors_VLD(policy::AlphaVectorPolicy, pomdp, sample::Int)
     end
 
     display(p)
-    savefig(p, "alpha_vectors_sample_$sample.png")
+    savefig(p, "./figures/alpha_vectors_sample_$sample.png")
     return p
 end
-
 
 function plot_alpha_vectors(policy::AlphaVectorPolicy)
     # get alpha vectors
@@ -70,6 +69,32 @@ function plot_alpha_vectors(policy::AlphaVectorPolicy)
     return p
 end
 
+function plot_pareto_frontier()
+end
+
+function plot_belief_over_time(b_hist, a_hist; pomdp=nothing)
+    action_labels = if pomdp === nothing
+        string.(a_hist)
+    else
+        [a ≥ pomdp.inst+1 ? (a == pomdp.inst+1 ? "Declare Dead" : "Declare Life") :
+         (a == pomdp.inst ? "Accumulate" : "Sensor $(a)") for a in a_hist]
+    end
+
+    p= plot()
+    for a_label in unique(action_labels)
+        idxs = findall(==(a_label), action_labels)
+        plot!(idxs, b_hist[idxs], label=a_label)
+    end
+
+    xlabel!("Step")
+    ylabel!("P(life = 1)")
+    title!("Belief in Life Over Time by Action")
+
+    savefig(p, "./figures/belief_over_time.png")
+    display(p)
+    return p
+end
+
 function plot_decision_tree(tree_data::Tuple{Vector{String}, Dict{Tuple{Int64, Int64}, String}, Vector{Tuple{Int64, Int64}}})
     node_labels, edge_colors, edges = tree_data
 
@@ -85,7 +110,6 @@ function plot_decision_tree(tree_data::Tuple{Vector{String}, Dict{Tuple{Int64, I
     return t
 end
 
-# TODO: need to fix this
 function plot_bayes_net(bn::DiscreteBayesNet)
     node_labels = [string(v.name) for v in bn.vars]
     t = TikzGraphs.plot(bn.graph, TikzGraphs.Layouts.Spring(), node_labels,
@@ -94,7 +118,3 @@ function plot_bayes_net(bn::DiscreteBayesNet)
     TikzPictures.save(TikzPictures.TEX("./figures/bayes_net.tex"), t)
     return t
 end
-
-function plot_pareto_frontier()
-end
-
