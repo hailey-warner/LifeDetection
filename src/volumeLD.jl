@@ -4,6 +4,8 @@ using POMDPTools
 struct volumeLifeDetectionPOMDP <: POMDP{Int, Int, Int}  # POMDP{State, Action, Observation}
     bn::DiscreteBayesNet # Bayesian Network,
     λ::Float64    
+    actionCpds::Dict
+    maxObs::Int64
     inst::Int64 # number of instruments (child nodes)
     sampleVolume::Int64
     lifeStates::Int64
@@ -18,6 +20,8 @@ end
 function volumeLifeDetectionPOMDP(;
     bn::DiscreteBayesNet, # Bayesian Network,
     λ::Float64,    
+    actionCpds::Dict,
+    maxObs::Int64,
     inst::Int64 = 7, # number of instruments / not using instrument
     sampleVolume::Int64 = 500,
     lifeStates::Int64 = 3,
@@ -26,7 +30,7 @@ function volumeLifeDetectionPOMDP(;
     # k::Vector{Float64} = [HRMS*10e6, SMS*10e6, μCE_LI*10e6, ESA*10e6, microscope*10e6, nanopore*10e6], # cost of observations
     discount::Float64 = 0.9,
 )
-    return volumeLifeDetectionPOMDP(bn,λ,inst,sampleVolume,lifeStates,surfaceAccRate,sampleUse,discount)
+    return volumeLifeDetectionPOMDP(bn,λ,actionCpds,maxObs,inst,sampleVolume,lifeStates,surfaceAccRate,sampleUse,discount)
 end
 
 # 1 -> dead
@@ -39,11 +43,11 @@ POMDPs.states(pomdp::volumeLifeDetectionPOMDP) =  1: pomdp.sampleVolume*pomdp.li
 POMDPs.actions(pomdp::volumeLifeDetectionPOMDP) = [1:pomdp.inst..., pomdp.inst+1, pomdp.inst+2]
 
 # Extra observation at end which will be null observation
-POMDPs.observations(pomdp::volumeLifeDetectionPOMDP) = 1: pomdp.sampleVolume*pomdp.lifeStates+pomdp.lifeStates+1 #(pomdp.sampleVolume*((2^pomdp.lifeStates)))+(2^pomdp.lifeStates)
+POMDPs.observations(pomdp::volumeLifeDetectionPOMDP) = 0 : pomdp.maxObs*(pomdp.sampleVolume+1) # pomdp.sampleVolume*pomdp.lifeStates+pomdp.lifeStates+1 
 
 POMDPs.stateindex(pomdp::volumeLifeDetectionPOMDP, s::Int) = s
 POMDPs.actionindex(pomdp::volumeLifeDetectionPOMDP,a::Int) = a
-POMDPs.obsindex(pomdp::volumeLifeDetectionPOMDP, o::Int)   = o
+POMDPs.obsindex(pomdp::volumeLifeDetectionPOMDP, o::Int)   = o+1
 
 
 # TODO: do we want to start with different states?
@@ -120,43 +124,44 @@ end
 function POMDPs.observation(pomdp::volumeLifeDetectionPOMDP, a::Int,  sp::Int)
 
     sampleVolume, lifeState = stateindex_to_state(sp, pomdp.lifeStates)
-    ob1 = state_to_stateindex(sampleVolume, 1)
-    ob2 = state_to_stateindex(sampleVolume, 2)
 
     # if we already declared alive/dead, observation doesn't matter
     # if we declare alive/dead, observation doesn't matter
     # not choosing anything
+    # TODO: return null obs if samplevolume == 0?
     if POMDPs.isterminal(pomdp, sp) || a == pomdp.inst + 1 || a == pomdp.inst + 2 || a == pomdp.inst
-        return Deterministic(pomdp.sampleVolume*pomdp.lifeStates+pomdp.lifeStates+1 ) #SparseCat([ob1, ob2], [0.5,0.5])
+        return Deterministic(0)
     end
 
-    # Sample first, then do infer to get posterior?
+    # # Sample first, then do infer to get posterior?
 
-    # Instrument Action to sample characteristics:
-    action_to_cpds = Dict(
-        1 => [3, 5, 6, 10],   # HRMS >> Salinity (index 3), Path Complexity Index (5), CHNOPS (index 6), and redox (index 10)
-        2 => [4, 7],       # SMS >> Chirality (index 4), Amino Acid Abundance (7)
-        3 => [4, 7],       # μCE_LI >> Chirality (index 4), Amino Acid Abundance (7)
-        4 => [3, 6],       # ESA >> Salinity (index 3), CHNOPS (index 6)
-        5 => [8, 9],      # microscope >> Cell Membrane (8), autofluorescence (9)
-        6 => [2],      # nanopore >> Polyelectrolyte (index 2)
-    )
-    # Get the specific sample indicies for action selected
-    cpd_indices = action_to_cpds[a]
-    evidence_dict = Dict()  # Start with life state as evidence
+    # # Instrument Action to sample characteristics:
+    # action_to_cpds = Dict(
+    #     1 => [3, 5, 6, 10],   # HRMS >> Salinity (index 3), Path Complexity Index (5), CHNOPS (index 6), and redox (index 10)
+    #     2 => [4, 7],       # SMS >> Chirality (index 4), Amino Acid Abundance (7)
+    #     3 => [4, 7],       # μCE_LI >> Chirality (index 4), Amino Acid Abundance (7)
+    #     4 => [3, 6],       # ESA >> Salinity (index 3), CHNOPS (index 6)
+    #     5 => [8, 9],      # microscope >> Cell Membrane (8), autofluorescence (9)
+    #     6 => [2],      # nanopore >> Polyelectrolyte (index 2)
+    # )
+    # # Get the specific sample indicies for action selected
+    # cpd_indices = action_to_cpds[a]
+    # evidence_dict = Dict()  # Start with life state as evidence
 
-    # For each CPD index, sample and add to evidence
-    for idx in cpd_indices
-        posterior = infer(bn, bn.cpds[idx].target, evidence=Assignment(Dict(:l => lifeState)))# Start with life state as evidence
-        sample = rand(Categorical(convert(DataFrame, posterior)[!,"potential"]))
-        evidence_dict[bn.cpds[idx].target] = sample
-    end
+    # # For each CPD index, sample and add to evidence
+    # for idx in cpd_indices
+    #     posterior = infer(bn, bn.cpds[idx].target, evidence=Assignment(Dict(:l => lifeState)))# Start with life state as evidence
+    #     sample = rand(Categorical(convert(DataFrame, posterior)[!,"potential"]))
+    #     evidence_dict[bn.cpds[idx].target] = sample
+    # end
 
-    # All this is saying is: bn.cpds[1].target = :l
-    p_life = infer(bn, bn.cpds[1].target, evidence=Assignment(evidence_dict))
+    # # All this is saying is: bn.cpds[1].target = :l
+    # p_life = infer(bn, bn.cpds[1].target, evidence=Assignment(evidence_dict))
    
-    # Return a probability distribution over the new posterior of life (1 = no, 2 = yes)
-    return SparseCat([ob1, ob2], [p_life[1], p_life[2]])
+    # # Return a probability distribution over the new posterior of life (1 = no, 2 = yes)
+    # return SparseCat([ob1, ob2], [p_life[1], p_life[2]])
+
+    return SparseCat(obsSampleVolume(sampleVolume, pomdp.maxObs), distObservations(pomdp.actionCpds, lifeState, a, pomdp.maxObs))
 end
 
 function expected_belief_change(pomdp::volumeLifeDetectionPOMDP, a::Int)
@@ -209,6 +214,11 @@ end
 function state_to_stateindex(sampleVolume::Int, lifeStates::Int)
     return (sampleVolume-1)*3+lifeStates+3
 end
+
+function obsSampleVolume(sampleVolume::Int, maxObs::Int)
+    return maxObs*(sampleVolume)+1:maxObs*(sampleVolume)+maxObs
+end
+
 function stateindex_to_state(index::Int, n_lifeStates::Int)
     if index%n_lifeStates != 0
         sampleVolume = div(index,n_lifeStates)

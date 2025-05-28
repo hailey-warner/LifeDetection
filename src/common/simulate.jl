@@ -41,6 +41,7 @@ function simulate_policyVLD(pomdp, policy, type="SARSOP", n_episodes=1,verbose=t
             
             sp = rand(transition(pomdp, s, a))
             o = rand(observation(pomdp, a, sp))
+            
             if o != pomdp.sampleVolume*pomdp.lifeStates+pomdp.lifeStates+1
                 _ , o_state = stateindex_to_state(o, pomdp.lifeStates)  # Save the current state before transitioning 
             end
@@ -52,7 +53,7 @@ function simulate_policyVLD(pomdp, policy, type="SARSOP", n_episodes=1,verbose=t
             # format action and observation names
             action_name = a >= pomdp.inst+1 ? (a == pomdp.inst+1 ? "Declare Dead" : "Declare Life") : (a == pomdp.inst ? "Accumulate" : "Sensor $(a)")
             accu , true_state = stateindex_to_state(s, pomdp.lifeStates)  # Save the current state before transitioning 
-            if o_old != pomdp.sampleVolume*pomdp.lifeStates+pomdp.lifeStates+1
+            if o_old != 0
                 if true_state == 1 && step > 1
                     o_old += 1
                 end

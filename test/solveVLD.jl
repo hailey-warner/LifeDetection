@@ -11,7 +11,8 @@ using Plots
 
 # include("../src/common/utils.jl")
 # include("../src/bayesNet_old.jl")
-include("../src/bayesnet_discrete.jl")
+# include("../src/bayesnet_discrete.jl")
+include("../src/bayesnet.jl")
 include("../src/volumeLD.jl")
 include("CONOPsOrbiter.jl")
 
@@ -33,9 +34,30 @@ none = 0
 surfaceAccRate = 10 # 270 μL per day
 
 
+# Instrument Action to sample characteristics:
+actionCpds = Dict(
+    1 => [:C7, :C5, :C8, :C10],   # HRMS ()
+    2 => [:C5, :C6],              # SMS
+    3 => [:C5, :C6],              # μCE_LIF
+    4 => [:C7, :C8],              # ESA
+    5 => [:C2, :C3],              # microscope
+    6 => [:C1]                    # nanopore
+)
+
+# Use a specific action
+# action = 6
+# maxObs = determineMaxObs(actionCpds) 
+# lifeState = 2
+# distObservations(action_to_cpds, lifeState, action, maxObs)
+
+# ci = CartesianIndices(Tuple(domain_sizes))[11248]
+
+
 pomdp = volumeLifeDetectionPOMDP(
             bn=bn, # inside /src/bayesnet_discrete.jl
             λ=0.995, 
+            actionCpds=actionCpds,
+            maxObs=determineMaxObs(actionCpds),
             inst=7, # one extra for not choosing anything
             sampleVolume=300, 
             lifeStates = 3,
