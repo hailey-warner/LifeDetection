@@ -5,6 +5,8 @@
 *.gz
 *.log
 *.aux
+*.pomdpx
+*.out
+figures/
 model.pomdpx
 policy.out
-figures/
