@@ -277,14 +277,14 @@ end
 #     f = convert(Factor, cpd)
 # end
 
-function distObservations(action_to_cpds, lifeState, action, maxObs)
+function distObservations(actionCpds, lifeState, action, maxObs)
 
-    posterior = infer(bn, action_to_cpds[action] ,evidence=(Assignment(:l => lifeState )))
+    posterior = infer(bn, actionCpds[action] ,evidence=(Assignment(:C0 => lifeState )))
 
     probs = Float64[]  # P(obs | l=1)
 
     # Determine domain sizes (bins per variable)
-    domain_sizes = [length(bn.cpds[bn.name_to_index[v]].distributions[1].p) for v in action_to_cpds[action]]
+    domain_sizes = [length(bn.cpds[bn.name_to_index[v]].distributions[1].p) for v in posterior.dimensions]
     obs_indices = collect(CartesianIndices(Tuple(domain_sizes)))
 
     # -- Inference Loop --
@@ -302,17 +302,17 @@ function distObservations(action_to_cpds, lifeState, action, maxObs)
 end
 
 
-function determineMaxObs(action_to_cpds)
+function determineMaxObs(actionCpds)
 
     maxObs = 0
     
-    for action in collect(keys(action_to_cpds))
+    for action in collect(keys(actionCpds))
         for lifeState in [1,2]
             probs = Float64[]  # P(obs | l=1)
-            posterior = infer(bn, action_to_cpds[action] ,evidence=(Assignment(:l => lifeState )))
+            posterior = infer(bn, actionCpds[action] ,evidence=(Assignment(:C0 => lifeState )))
 
             # Determine domain sizes (bins per variable)
-            domain_sizes = [length(bn.cpds[bn.name_to_index[v]].distributions[1].p) for v in action_to_cpds[action]]
+            domain_sizes = [length(bn.cpds[bn.name_to_index[v]].distributions[1].p) for v in posterior.dimensions]
             obs_indices = collect(CartesianIndices(Tuple(domain_sizes)))
 
             # -- Inference Loop --
@@ -327,7 +327,5 @@ function determineMaxObs(action_to_cpds)
 
     return maxObs
 end
-
-using StatsBase
 
 
