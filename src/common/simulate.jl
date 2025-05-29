@@ -15,7 +15,9 @@ function simulate_policyVLD(pomdp, policy, type="SARSOP", n_episodes=1,verbose=t
         
         if verbose
             println("\nPolicy Simulation: Episode ",episode)
-            println("Step | Action       | Observation | Belief(Life) | True State | Acc Sample | Total Reward ")
+            # println("Step | Action       | Observation | Belief(Life) | True State | Acc Sample | Total Reward ")
+
+            println("Step | Action        | Belief(Life) | True State | Acc Sample | Total Reward ")
             println("-------------------------------------------------------------------------------")
         end
         step = 1
@@ -27,8 +29,9 @@ function simulate_policyVLD(pomdp, policy, type="SARSOP", n_episodes=1,verbose=t
         modeAcc = true
         prevAction = 0
         belief_life = pdf(b,o_old)
+        action_final = 0
 
-        while !isterminal(pomdp, s) && step ≤ 200  # max 10 steps
+        while !isterminal(pomdp, s) && step ≤ 50  # max 10 steps
 
             # get action, next state, and observation
             if type == "SARSOP"
@@ -42,10 +45,6 @@ function simulate_policyVLD(pomdp, policy, type="SARSOP", n_episodes=1,verbose=t
             sp = rand(transition(pomdp, s, a))
             o = rand(observation(pomdp, a, sp))
             
-            if o != pomdp.sampleVolume*pomdp.lifeStates+pomdp.lifeStates+1
-                _ , o_state = stateindex_to_state(o, pomdp.lifeStates)  # Save the current state before transitioning 
-            end
-
             # Get reward and accumulate total reward
             r = reward(pomdp, s, a, sp)
             total_reward += r
@@ -53,27 +52,34 @@ function simulate_policyVLD(pomdp, policy, type="SARSOP", n_episodes=1,verbose=t
             # format action and observation names
             action_name = a >= pomdp.inst+1 ? (a == pomdp.inst+1 ? "Declare Dead" : "Declare Life") : (a == pomdp.inst ? "Accumulate" : "Sensor $(a)")
             accu , true_state = stateindex_to_state(s, pomdp.lifeStates)  # Save the current state before transitioning 
-            if o_old != 0
+            println("Obs: ", o)
+
+            s_check = s
+            if o != 0
                 if true_state == 1 && step > 1
-                    o_old += 1
+                    s_check = s_check + 1
                 end
-            
-                belief_life = pdf(b,o_old)
+        
+                belief_life = pdf(b,s_check)
+
             end
-            if o != pomdp.sampleVolume*pomdp.lifeStates+pomdp.lifeStates+1
-                obs_name = o_state == 1 ? "Negative" : "Positive"
+            # if o != 0
+            #     obs_name = o_state == 1 ? "Negative" : "Positive"
                 
-            else
-                obs_name = "No Sense"
-                # belief_life = ""
-            end
+            # else
+            #     obs_name = "No Sense"
+            #     # belief_life = ""
+            # end
             
             # sum(pdf(b, state_to_stateindex(sample, 2)) for sample in 1:pomdp.sampleVolume)
 
             if verbose
                 # show step details
-                @printf("%3d  | %-12s | %-11s | %.3f        | %d          |  %d         | %.2f         \n", 
-                        step, action_name, obs_name, belief_life, true_state, accu, total_reward)
+                # @printf("%3d  | %-12s | %-11s | %.3f        | %d          |  %d         | %.2f         \n", 
+                #         step, action_name, obs_name, belief_life, true_state, accu, total_reward)
+
+                @printf("%3d  | %-12s | %.3f        | %d          |  %d         | %.2f         \n", 
+                        step, action_name, belief_life, true_state, accu, total_reward)
             end
 
             # update belief
@@ -81,16 +87,13 @@ function simulate_policyVLD(pomdp, policy, type="SARSOP", n_episodes=1,verbose=t
             # if o != pomdp.sampleVolume*pomdp.lifeStates+pomdp.lifeStates+1
             b = update(updater, b, a, o)
 
-            if o != pomdp.sampleVolume*pomdp.lifeStates+pomdp.lifeStates+1
-                temp_o_old = o
-            end
-            o_old = o
-            
             # end
             s = sp
             step += 1
+            action_final = a-pomdp.inst
         end
-        acc = 1-abs(true_state-1-pdf(b,temp_o_old))
+        println(action_final)
+        acc =  (action_final == true_state ? 1 : 0) 
         push!(total_episode_rewards, total_reward)
         push!(accuracy, acc)
     end

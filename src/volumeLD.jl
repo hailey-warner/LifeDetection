@@ -129,7 +129,7 @@ function POMDPs.observation(pomdp::volumeLifeDetectionPOMDP, a::Int,  sp::Int)
     # if we declare alive/dead, observation doesn't matter
     # not choosing anything
     # TODO: return null obs if samplevolume == 0?
-    if POMDPs.isterminal(pomdp, sp) || a == pomdp.inst + 1 || a == pomdp.inst + 2 || a == pomdp.inst
+    if POMDPs.isterminal(pomdp, sp) || a == pomdp.inst + 1 || a == pomdp.inst + 2 || a == pomdp.inst #|| sampleVolume == 0
         return Deterministic(0)
     end
 
