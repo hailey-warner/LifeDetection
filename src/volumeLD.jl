@@ -193,7 +193,7 @@ end
 
 function POMDPs.reward(pomdp::volumeLifeDetectionPOMDP, s::Int, a::Int) #, b::Vector{Float64})
     if a == pomdp.inst + 1  # Declaring "no life"
-        return s == 1 ? 0 : -pomdp.λ  # No reward if correct, penalty if wrong
+        return s == 1 ? -0.05*pomdp.λ : -pomdp.λ  # No reward if correct, penalty if wrong
     elseif a == pomdp.inst + 2  # Declaring "life exists"
         return s == 2 ? 0 : -pomdp.λ  # No reward if correct, penalty if wrong
     else  # Sensor action

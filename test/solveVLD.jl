@@ -6,7 +6,6 @@ using SARSOP
 using POMDPLinter
 using Distributions
 using Plots
-# using Statistics, Clustering, Plots
 
 
 # include("../src/common/utils.jl")
@@ -59,7 +58,7 @@ pomdp = volumeLifeDetectionPOMDP(
             actionCpds=actionCpds,
             maxObs=determineMaxObs(actionCpds),
             inst=7, # one extra for not choosing anything
-            sampleVolume=300, 
+            sampleVolume=100, 
             lifeStates = 3,
             surfaceAccRate = surfaceAccRate, 
             sampleUse = [HRMS, SMS, μCE_LIF, ESA, microscope, nanopore, none],
@@ -75,7 +74,10 @@ solver = SARSOPSolver(verbose = true, timeout=100)
 # policy = load_policy(pomdp,"policy.out")
 policy = solve(solver, pomdp)
 plot_alpha_vectors(policy)
-rewards, accuracy = simulate_policyVLD(pomdp, policy, "SARSOP", 100, false) # SARSOP or conops or greedy
+plot_alpha_vector_by_state(policy,pomdp)
+plot_pruned_alpha_vectors(policy)
+# plot_pruned_alpha_vectors(policy,pomdp,0)
+rewards, accuracy = simulate_policyVLD(pomdp, policy, "SARSOP", 100, true) # SARSOP or conops or greedy
 plot_alpha_vectors_VLD(policy,pomdp, 0)
 
 

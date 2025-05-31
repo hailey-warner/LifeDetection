@@ -10,3 +10,6 @@
 figures/
 model.pomdpx
 policy.out
+/goodPolicies
+/wandb
+.CondaPkg

@@ -1,6 +1,6 @@
 using BayesNets
-using TikzGraphs
-using TikzPictures
+# using TikzGraphs
+# using TikzPictures
 using Plots
 
 PLOT_CPDS = false

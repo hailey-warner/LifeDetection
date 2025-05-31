@@ -1,13 +1,36 @@
-function simulate_policyVLD(pomdp, policy, type="SARSOP", n_episodes=1,verbose=true)
+function simulate_policyVLD(pomdp, policy, type="SARSOP", n_episodes=1,verbose=true, wandb =false, wandb_Name = "")
     
     if verbose
         println("--------------------------------START EPISODES---------------------------------")
     end
 
+
     total_episode_rewards = []
     accuracy = []
 
     for episode in range(1, n_episodes)
+
+        if wandb
+            run = WandbLogger( #Wandb.wandb.init(
+                # Set the wandb entity where your project will be logged (generally your team name).
+                entity="sherpa-rpa",
+                # Set the wandb project where this run will be logged.
+                project=wandb_Name,
+                # Track hyperparameters and run metadata.
+                config=Dict(
+                    "bayesnet"=> pomdp.bn,
+                    "lambda"=> pomdp.λ,
+                    "actionCpds" => pomdp.actionCpds,
+                    "maxObs" => pomdp.maxObs,
+                    "inst" => pomdp.inst,
+                    "sampleVolume" => pomdp.sampleVolume,
+                    "lifeStates" => pomdp.lifeStates,
+                    "surfaceAccRate" => pomdp.surfaceAccRate,
+                    "sampleUse" => pomdp.sampleUse,
+                    "discount" => pomdp.discount,
+                ),
+            )
+        end
 
         updater = DiscreteUpdater(pomdp)
         b = initialize_belief(updater, initialstate(pomdp))
@@ -30,8 +53,14 @@ function simulate_policyVLD(pomdp, policy, type="SARSOP", n_episodes=1,verbose=t
         prevAction = 0
         belief_life = pdf(b,o_old)
         action_final = 0
+        a = 0
+        action_name = ""
+        belief_life = 0.0
+        s = 1
+        sp = 1
+        total_reward = 0.0
 
-        while !isterminal(pomdp, s) && step ≤ 50  # max 10 steps
+        while !isterminal(pomdp, s) && step ≤ 200  # max 10 steps
 
             # get action, next state, and observation
             if type == "SARSOP"
@@ -81,6 +110,25 @@ function simulate_policyVLD(pomdp, policy, type="SARSOP", n_episodes=1,verbose=t
                 @printf("%3d  | %-12s | %.3f        | %d          |  %d         | %.2f         \n", 
                         step, action_name, belief_life, true_state, accu, total_reward)
             end
+            if wandb
+                ###################################
+                Wandb.log(
+                    run,
+                    Dict(
+                        "Simulation/step" => step,
+                        "Simulation/actionName" => action_name,
+                        "Simulation/beliefLife" => belief_life,
+                        "Simulation/trueState" => true_state,
+                        "Simulation/accu" => acc,
+                        "Simulation/totalReward" => total_reward,
+                        "Simulation/observation" => o,
+                        "Simulation/state" => s,
+                        "Simulation/nextState" => sp,
+                        "Simulation/belief" => b
+                    ),
+                )
+
+            end
 
             # update belief
             # if a != pomdp.inst
@@ -92,6 +140,20 @@ function simulate_policyVLD(pomdp, policy, type="SARSOP", n_episodes=1,verbose=t
             step += 1
             action_final = a-pomdp.inst
         end
+
+        if wandb
+            Wandb.wandb.summary["action_final"] = a
+            Wandb.wandb.summary["action_final_name"] = action_name
+            Wandb.wandb.summary["belief_final"] = belief_life
+            Wandb.wandb.summary["s_final"] = true_state
+            Wandb.wandb.summary["sp_final"] = sp
+            Wandb.wandb.summary["total_reward_final"] = total_reward
+            Wandb.wandb.summary["accuracy_final"] = (action_final == true_state ? 1 : 0) 
+
+            close(run)
+            sleep(0.3)
+        end
+
         println(action_final)
         acc =  (action_final == true_state ? 1 : 0) 
         push!(total_episode_rewards, total_reward)
@@ -118,7 +180,7 @@ function decision_tree(pomdp, policy; max_depth=3)
         b_val = pdf(b, 1)
         #println("tree action: ", a)
         #println("tree belief: ", b_val)
-        action_name = a ≤ 2 ? (a == 1 ? "Declare Dead" : "Declare Life") : "Sensor $(a - 2)"
+        action_name = pomdp.inst < a ? (a == 8 ? "Declare Dead" : "Declare Life") : (pomdp.inst == a ? "Accumulate" : "Sensor $(a - 2)")
         label = "Action: $(action_name)\nBelief: $(b_val)"
         push!(node_labels, label)
         current_index = length(node_labels)
@@ -136,7 +198,8 @@ function decision_tree(pomdp, policy; max_depth=3)
         
         # Branch for each observation
         for o in POMDPs.observations(pomdp)
-            obs_name = o == 1 ? "N" : "Y"
+            obs_name = "$(o)" # = o == 1 ? "N" : "Y"
+            println(o)
             b_new = update(updater, b, a, o)
             traverse(b_new, current_index, obs_name, depth+1)
         end
