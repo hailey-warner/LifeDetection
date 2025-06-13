@@ -15,7 +15,7 @@ function plot_alpha_vectors_VLD(policy::AlphaVectorPolicy, pomdp, sample::Int)
 	num_vectors = size(alpha_vectors, 1)
 	b = range(0, 1, length = 200)  # Belief in L=1 (life)
 	# b = range(1, pomdp.sample, length=200)  # Belief in L=1 (life)
-	# b = range(1, pomdp.sample_volume*pomdp.lifeStates+pomdp.lifeStates, length=200)  # Belief in L=1 (life)
+	# b = range(1, pomdp.sample_volume*pomdp.life_states+pomdp.life_states, length=200)  # Belief in L=1 (life)
 
 	p = Plots.plot(title = "Alpha Vectors at Sample Volume = $sample",
 		xlabel = "Belief in Life (P(L=1))", ylabel = "Value",

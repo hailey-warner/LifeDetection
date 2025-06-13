@@ -1,19 +1,6 @@
 using POMDPs # TODO: check if i can delete this
 using POMDPTools
-
-struct volumeLifeDetectionPOMDP <: POMDP{Int, Int, Int}  # POMDP{State, Action, Observation}
-	bn::DiscreteBayesNet # Bayesian Network,
-	λ::Float64
-	action_cpds::Dict
-	max_obs::Int64
-	inst::Int64 # number of instruments (child nodes)
-	sample_volume::Int64
-	life_states::Int64
-	surfaceAccRate::Int64
-	sampleUse::Vector{Int64}
-	# k::Vector{Float64} # cost of observations
-	discount::Float64
-end
+include("../src/common/utils.jl")
 
 
 # Custom constructor to handle dynamic initialization
@@ -25,12 +12,12 @@ function volumeLifeDetectionPOMDP(;
 	inst::Int64 = 7, # number of instruments / not using instrument
 	sample_volume::Int64 = 500,
 	life_states::Int64 = 3,
-	surfaceAccRate::Int64 = 270,
-	sampleUse::Vector{Int64} = [1, 1, 1, 1, 1, 1, 1], # cost of observations
+	acc_rate::Int64 = 270,
+	sample_use::Vector{Int64} = [1, 1, 1, 1, 1, 1, 1], # cost of observations
 	# k::Vector{Float64} = [HRMS*10e6, SMS*10e6, μCE_LI*10e6, ESA*10e6, microscope*10e6, nanopore*10e6], # cost of observations
 	discount::Float64 = 0.9,
 )
-	return volumeLifeDetectionPOMDP(bn, λ, action_cpds, max_obs, inst, sample_volume, life_states, surfaceAccRate, sampleUse, discount)
+	return volumeLifeDetectionPOMDP(bn, λ, action_cpds, max_obs, inst, sample_volume, life_states, acc_rate, sample_use, discount)
 end
 
 # 1 -> dead
@@ -76,7 +63,7 @@ function POMDPs.transition(pomdp::volumeLifeDetectionPOMDP, s::Int, a::Int)
 
 	# if life_state == 3
 	#     life_state = rand(1:2) # Set new life_state at new iteration
-	#     sample_volume = 0#pomdp.surfaceAccRate
+	#     sample_volume = 0#pomdp.acc_rate
 	# end
 
 	if a <= pomdp.inst
@@ -86,11 +73,11 @@ function POMDPs.transition(pomdp::volumeLifeDetectionPOMDP, s::Int, a::Int)
 
 			# Trying to make it so that waiting to use an instrument is
 			# done multiple times
-			# if sample_volume % pomdp.surfaceAccRate != 1
-			#     sample_volume = 1 #pomdp.surfaceAccRate
+			# if sample_volume % pomdp.acc_rate != 1
+			#     sample_volume = 1 #pomdp.acc_rate
 			# end
 			# life_state = rand(1:2)
-			sample_volume += pomdp.surfaceAccRate
+			sample_volume += pomdp.acc_rate
 
 			# Always make sure sample Volume can't exceed certain volume
 			if sample_volume > pomdp.sample_volume
@@ -105,8 +92,8 @@ function POMDPs.transition(pomdp::volumeLifeDetectionPOMDP, s::Int, a::Int)
 
 			# if we choose to use an instrument, we take away from sample_volume, assuming we are not choosing to wait for accumulation at this step
 		else
-			if sample_volume >= pomdp.sampleUse[a]
-				sample_volume = sample_volume - pomdp.sampleUse[a]
+			if sample_volume >= pomdp.sample_use[a]
+				sample_volume = sample_volume - pomdp.sample_use[a]
 			end
 
 		end
@@ -202,7 +189,7 @@ function POMDPs.reward(pomdp::volumeLifeDetectionPOMDP, s::Int, a::Int) #, b::Ve
 
 		sample_volume, life_state = stateindex_to_state(s, pomdp.life_states)
 
-		if sample_volume < pomdp.sampleUse[a]
+		if sample_volume < pomdp.sample_use[a]
 			return -10000
 		end
 		# more you're wasting the worse it is

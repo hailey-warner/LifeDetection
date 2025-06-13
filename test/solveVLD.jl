@@ -11,7 +11,7 @@ using Plots
 
 include("../src/bayesnet.jl")
 include("../src/volumeLD.jl")
-include("CONOPsOrbiter.jl")
+include("conops.jl")
 
 include("../src/common/plotting.jl")
 include("../src/common/simulate.jl")
@@ -28,7 +28,7 @@ ESA = ESA_1 + ESA_2 + ESA_3
 microscope = 1 # μL # 0.001 # mL # polyelectrolyte
 nanopore = 100 #10000 # μL # 10  # mL cell like morphologies
 none = 0
-surfaceAccRate = 10 # 270 μL per day
+acc_rate = 10 # 270 μL per day
 
 
 # Instrument Action to sample characteristics:
@@ -58,8 +58,8 @@ pomdp = volumeLifeDetectionPOMDP(
 	inst = 7, # one extra for not choosing anything
 	sample_volume = 300,
 	life_states = 3,
-	surfaceAccRate = surfaceAccRate,
-	sampleUse = [HRMS, SMS, μCE_LIF, ESA, microscope, nanopore, none],
+	acc_rate = acc_rate,
+	sample_use = [HRMS, SMS, μCE_LIF, ESA, microscope, nanopore, none],
 	discount = 0.9)
 
 # Running CONOPS:

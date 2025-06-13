@@ -133,8 +133,6 @@ function make_pgfplot(dist, title)
 	)
 end
 
-bn = DiscreteBayesNet()
-
 """
 C0  = life                           (Boolean)
 C1  = polyelectrolyte                (Boolean)
@@ -149,6 +147,7 @@ C9  = pH                             (R ∈ [0, 14])
 C10 = Redox Potential [V]            (R ∈ [-0.5, 0])
 
 """
+bn = DiscreteBayesNet()
 
 # life: Boolean
 push!(bn, DiscreteCPD(:C0, [0.9, 0.1])) # null hypothesis
@@ -246,13 +245,6 @@ C5_cpds = [
 	for i in 0:22
 ]
 push!(bn, DiscreteCPD(:C10, [:C5], [23], C5_cpds))
-
-# debugging:
-# for cpd in bn.cpds
-#     println("Checking ", cpd.target)
-#     f = convert(Factor, cpd)
-
-
 
 
 
