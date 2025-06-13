@@ -9,9 +9,6 @@ using Plots
 # using Statistics, Clustering, Plots
 
 
-# include("../src/common/utils.jl")
-# include("../src/bayesNet_old.jl")
-# include("../src/bayesnet_discrete.jl")
 include("../src/bayesnet.jl")
 include("../src/volumeLD.jl")
 include("CONOPsOrbiter.jl")
@@ -19,9 +16,9 @@ include("CONOPsOrbiter.jl")
 include("../src/common/plotting.jl")
 include("../src/common/simulate.jl")
 
-HRMS = 1 #0 # 0.5e-6 # mL # organic compounds, just going to set to zero its too small
-SMS_1 = 20 #400 # μL # 0.4 # mL # amino acid characerization
-SMS_2 = 20 #100 # μL # 0.1 mL # Lipid Characterization
+HRMS = 1   # mL organic compounds, just going to set to zero its too small
+SMS_1 = 20 # mL amino acid characerization
+SMS_2 = 20 # mL lipid characterization
 SMS = SMS_1 + SMS_2
 μCE_LIF = 2 #15 # μL #0.015 # mL # amino acid and lipid characterization
 ESA_1 = 2 #15 # μL #0.015  # mL # macronutrients
@@ -35,48 +32,48 @@ surfaceAccRate = 10 # 270 μL per day
 
 
 # Instrument Action to sample characteristics:
-actionCpds = Dict(
-    1 => [:C5, :C7, :C8, :C10],   # HRMS ()
-    2 => [:C5, :C6],              # SMS
-    3 => [:C5, :C6],              # μCE_LIF
-    4 => [:C7, :C8],              # ESA
-    5 => [:C2, :C3],              # microscope
-    6 => [:C1]                    # nanopore
+action_cpds = Dict(
+	1 => [:C5, :C7, :C8, :C10],   # HRMS
+	2 => [:C5, :C6],              # SMS
+	3 => [:C5, :C6],              # μCE_LIF
+	4 => [:C7, :C8],              # ESA
+	5 => [:C2, :C3],              # microscope
+	6 => [:C1],                    # nanopore
 )
 
 # Use a specific action
 # action = 6
-# maxObs = determineMaxObs(actionCpds) 
-# lifeState = 2
-# distObservations(action_to_cpds, lifeState, action, maxObs)
+# max_obs = determine_max_obs(action_cpds) 
+# life_state = 2
+# dist_observations(action_to_cpds, life_state, action, max_obs)
 
 # ci = CartesianIndices(Tuple(domain_sizes))[11248]
 
 
 pomdp = volumeLifeDetectionPOMDP(
-            bn=bn, # inside /src/bayesnet_discrete.jl
-            λ=0.99, 
-            actionCpds=actionCpds,
-            maxObs=determineMaxObs(actionCpds),
-            inst=7, # one extra for not choosing anything
-            sampleVolume=300, 
-            lifeStates = 3,
-            surfaceAccRate = surfaceAccRate, 
-            sampleUse = [HRMS, SMS, μCE_LIF, ESA, microscope, nanopore, none],
-            discount=0.9)
+	bn = bn, # inside /src/bayesnet_discrete.jl
+	λ = 0.99,
+	action_cpds = action_cpds,
+	max_obs = determine_max_obs(action_cpds),
+	inst = 7, # one extra for not choosing anything
+	sample_volume = 300,
+	life_states = 3,
+	surfaceAccRate = surfaceAccRate,
+	sampleUse = [HRMS, SMS, μCE_LIF, ESA, microscope, nanopore, none],
+	discount = 0.9)
 
 # Running CONOPS:
 rewards, accuracy = simulate_policyVLD(pomdp, "policy", "conops", 1, true) # SARSOP or conops or greedy
 
 # Running SARSOP
-solver = SARSOPSolver(verbose = true, timeout=100)
+solver = SARSOPSolver(verbose = true, timeout = 100)
 @show_requirements POMDPs.solve(solver, pomdp)
 
 # policy = load_policy(pomdp,"policy.out")
 policy = solve(solver, pomdp)
 plot_alpha_vectors(policy)
 rewards, accuracy = simulate_policyVLD(pomdp, policy, "SARSOP", 100, false) # SARSOP or conops or greedy
-plot_alpha_vectors_VLD(policy,pomdp, 0)
+plot_alpha_vectors_VLD(policy, pomdp, 0)
 
 
 
@@ -133,7 +130,7 @@ plot_alpha_vectors_VLD(policy,pomdp, 0)
 
 # # format action and observation names
 # action_name = a >= pomdp.inst+1 ? (a == pomdp.inst+1 ? "Declare Dead" : "Declare Life") : (a == pomdp.inst ? "Accumulate" : "Sensor $(a)")
-# accu , true_state = stateindex_to_state(s, pomdp.lifeStates)  # Save the current state before transitioning 
+# accu , true_state = stateindex_to_state(s, pomdp.life_states)  # Save the current state before transitioning 
 # println("Obs: ", o)
 
 # s_check = s
@@ -147,13 +144,13 @@ plot_alpha_vectors_VLD(policy,pomdp, 0)
 # end
 # # if o != 0
 # #     obs_name = o_state == 1 ? "Negative" : "Positive"
-    
+
 # # else
 # #     obs_name = "No Sense"
 # #     # belief_life = ""
 # # end
 
-# # sum(pdf(b, state_to_stateindex(sample, 2)) for sample in 1:pomdp.sampleVolume)
+# # sum(pdf(b, state_to_stateindex(sample, 2)) for sample in 1:pomdp.sample_volume)
 
 # if verbose
 #     # show step details
@@ -166,7 +163,7 @@ plot_alpha_vectors_VLD(policy,pomdp, 0)
 
 # # update belief
 # # if a != pomdp.inst
-# # if o != pomdp.sampleVolume*pomdp.lifeStates+pomdp.lifeStates+1
+# # if o != pomdp.sample_volume*pomdp.life_states+pomdp.life_states+1
 # b = update(updater, b, a, o)
 
 # # end
