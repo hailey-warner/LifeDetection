@@ -9,7 +9,7 @@ function obsindex(pomdp::LifeDetectionPOMDP, s::LDState)
 
     # Step 2: Instrument health index (inst_health conversion)
     inst_health_index = 0
-    for i in 1:pomdp.NumInst
+    for i = 1:pomdp.NumInst
         inst_health_index += (s.inst_health[i]-1) * pomdp.indices[i]
     end
 
@@ -20,5 +20,5 @@ end
 function POMDPs.observation(pomdp::LifeDetectionPOMDP, a, sp)
 
     return Deterministic(sp)
-    
+
 end

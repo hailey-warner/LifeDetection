@@ -38,7 +38,7 @@ end
 # end
 
 
-struct LifeDetectionPOMDP <: POMDP{LDState, Int, Int}
+struct LifeDetectionPOMDP <: POMDP{LDState,Int,Int}
 
     # Number of Instruments
     NumInst::Int
@@ -64,21 +64,21 @@ end
 # Custom Constructor
 function LifeDetectionPOMDP(
     NumInst::Int=3;
-    InstSigma::Vector{Float64}=[10.0^(i-1) for i in (NumInst-1):-1:0],
+    InstSigma::Vector{Float64}=[10.0^(i-1) for i = (NumInst-1):-1:0],
     SampleTrueVal::Int=rand(1:10),
-    SampleCertaintyMax::Int=10, 
+    SampleCertaintyMax::Int=10,
     InstHealthMax::Int=5,
-    indices = cumprod([SampleCertaintyMax, fill(InstHealthMax, NumInst-1)...]),
-    discount_factor::Float64 = 0.9,
-    )
+    indices=cumprod([SampleCertaintyMax, fill(InstHealthMax, NumInst-1)...]),
+    discount_factor::Float64=0.9,
+)
     return LifeDetectionPOMDP(
         NumInst,
         InstSigma,
         SampleTrueVal,
-        SampleCertaintyMax, 
-        InstHealthMax, 
+        SampleCertaintyMax,
+        InstHealthMax,
         indices,
-        discount_factor
+        discount_factor,
     )
 end
 

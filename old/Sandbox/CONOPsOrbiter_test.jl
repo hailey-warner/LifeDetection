@@ -22,13 +22,30 @@ variable_specs = [(:l, 2), (:h, 2), (:s, 2), (:μ, 2), (:E, 2), (:m, 2), (:n, 2)
 dependencies = [(:l, :h), (:l, :s), (:l, :μ), (:l, :E), (:l, :m), (:l, :n)]
 probability_tables = [
     ([:l], [(l=1,) => 0.3, (l=2,) => 0.7]),
-    ([:h, :l], [(h=1, l=1) => 0.55, (h=2, l=1) => 0.45, (h=1, l=2) => 0.45, (h=2, l=2) => 0.55]),
-    ([:s, :l], [(s=1, l=1) => 0.7, (s=2, l=1) => 0.3, (s=1, l=2) => 0.45, (s=2, l=2) => 0.55]),
-    ([:μ, :l], [(μ=1, l=1) => 0.65, (μ=2, l=1) => 0.35, (μ=1, l=2) => 0.45, (μ=2, l=2) => 0.55]),
-    ([:E, :l], [(E=1, l=1) => 0.6, (E=2, l=1) => 0.4, (E=1, l=2) => 0.49, (E=2, l=2) => 0.51]),
-    ([:m, :l], [(m=1, l=1) => 0.61, (m=2, l=1) => 0.39, (m=1, l=2) => 0.5, (m=2, l=2) => 0.5]),
-    ([:n, :l], [(n=1, l=1) => 0.99, (n=2, l=1) => 0.01, (n=1, l=2) => 0.35, (n=2, l=2) => 0.65]),
-    
+    (
+        [:h, :l],
+        [(h=1, l=1) => 0.55, (h=2, l=1) => 0.45, (h=1, l=2) => 0.45, (h=2, l=2) => 0.55],
+    ),
+    (
+        [:s, :l],
+        [(s=1, l=1) => 0.7, (s=2, l=1) => 0.3, (s=1, l=2) => 0.45, (s=2, l=2) => 0.55],
+    ),
+    (
+        [:μ, :l],
+        [(μ=1, l=1) => 0.65, (μ=2, l=1) => 0.35, (μ=1, l=2) => 0.45, (μ=2, l=2) => 0.55],
+    ),
+    (
+        [:E, :l],
+        [(E=1, l=1) => 0.6, (E=2, l=1) => 0.4, (E=1, l=2) => 0.49, (E=2, l=2) => 0.51],
+    ),
+    (
+        [:m, :l],
+        [(m=1, l=1) => 0.61, (m=2, l=1) => 0.39, (m=1, l=2) => 0.5, (m=2, l=2) => 0.5],
+    ),
+    (
+        [:n, :l],
+        [(n=1, l=1) => 0.99, (n=2, l=1) => 0.01, (n=1, l=2) => 0.35, (n=2, l=2) => 0.65],
+    ),
 ]
 
 
@@ -49,14 +66,15 @@ none = 0
 surfaceAccRate = 10 # 270 μL per day
 
 pomdp = volumeLifeDetectionPOMDP(
-            bn=bn, 
-            λ=0.5, 
-            inst=7, # one extra for not choosing anything
-            sampleVolume=300, 
-            lifeStates = 3,
-            surfaceAccRate = surfaceAccRate, 
-            sampleUse = [HRMS, SMS, μCE_LIF, ESA, microscope, nanopore, none],
-            discount=0.9)
+    bn=bn,
+    λ=0.5,
+    inst=7, # one extra for not choosing anything
+    sampleVolume=300,
+    lifeStates=3,
+    surfaceAccRate=surfaceAccRate,
+    sampleUse=[HRMS, SMS, μCE_LIF, ESA, microscope, nanopore, none],
+    discount=0.9,
+)
 # pomdp = volumeLifeDetectionPOMDP(
 #                 bn=bn,
 #                 λ=0.95,
@@ -71,13 +89,13 @@ pomdp = volumeLifeDetectionPOMDP(
 rewards, accuracy = simulate_policyVLD(pomdp, "policy", "conops", 1, true) # SARSOP or greedy
 
 # # transition(pomdp, 2406, 0)
-solver = SARSOPSolver(verbose = true, timeout=100)
+solver = SARSOPSolver(verbose=true, timeout=100)
 @show_requirements POMDPs.solve(solver, pomdp)
 
 policy = solve(solver, pomdp)
 plot_alpha_vectors(policy)
 rewards, accuracy = simulate_policyVLD(pomdp, policy, "SARSOP", 1, true) # SARSOP or greedy
-plot_alpha_vectors_VLD(policy,pomdp, 0)
+plot_alpha_vectors_VLD(policy, pomdp, 0)
 
 # get alpha vectors and action map
 alpha_vectors = policy.alphas
@@ -88,11 +106,14 @@ b = range(0, 1, length=200)  # Belief in L=1 (life)
 # b = range(1, pomdp.sample, length=200)  # Belief in L=1 (life)
 # b = range(1, pomdp.sampleVolume*pomdp.lifeStates+pomdp.lifeStates, length=200)  # Belief in L=1 (life)
 
-p = Plots.plot(title="Alpha Vectors at Sample Volume = $sample",
-         xlabel="Belief in Life (P(L=1))", ylabel="Value",
-         legend=:topright)
+p = Plots.plot(
+    title="Alpha Vectors at Sample Volume = $sample",
+    xlabel="Belief in Life (P(L=1))",
+    ylabel="Value",
+    legend=:topright,
+)
 
-for i in 1:num_vectors
+for i = 1:num_vectors
     α = alpha_vectors[i]
     # get indices for dead and life at this sample volume
     dead_idx = state_to_stateindex(30, 1)
@@ -126,7 +147,7 @@ return p
 #     # compute the value function for belief state b
 #     # V(b) = α₁*b + α₂*(1-b)
 #     V_b = [alpha_vectors[i][1] * b_i + alpha_vectors[i][2] * (1 - b_i) for b_i in b]
-    
+
 #     # plot each alpha vector as a line
 #     # note : if action i isn't present, it means running instrument i was not optimal.
 #     plot!(b, V_b, label="α_$i (a=$(policy.action_map[i]))")

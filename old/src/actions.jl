@@ -1,7 +1,7 @@
 
 POMDPs.actions(pomdp::LifeDetectionPOMDP) = 1:(pomdp.NumInst)
 
-POMDPs.actionindex(pomdp::LifeDetectionPOMDP,a::Int) = a
+POMDPs.actionindex(pomdp::LifeDetectionPOMDP, a::Int) = a
 
 
 

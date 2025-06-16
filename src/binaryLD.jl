@@ -1,4 +1,4 @@
-struct binaryLifeDetectionPOMDP <: POMDP{Int, Int, Int}  # POMDP{State, Action, Observation}
+struct binaryLifeDetectionPOMDP <: POMDP{Int,Int,Int}  # POMDP{State, Action, Observation}
     inst::Int           # number of instruments
     bn::BayesianNetwork # Bayesian network
     k::Vector{Float64}  # cost of observations/instruments
@@ -9,14 +9,14 @@ end
 
 # custom constructor to handle dynamic initialization
 function binaryLifeDetectionPOMDP(;
-    inst::Int, 
-    bn::BayesianNetwork, 
-    k::Vector{Float64} = [0.1, 0.8, 0.6, 0.2],
-    λ::Int = 5,
-    b::Float64 = 0.5,
-    discount::Float64 = 0.9,
+    inst::Int,
+    bn::BayesianNetwork,
+    k::Vector{Float64}=[0.1, 0.8, 0.6, 0.2],
+    λ::Int=5,
+    b::Float64=0.5,
+    discount::Float64=0.9,
 )
-    return binaryLifeDetectionPOMDP(inst,bn,k,λ,b,discount)
+    return binaryLifeDetectionPOMDP(inst, bn, k, λ, b, discount)
 end
 
 # dead (1)
@@ -29,14 +29,14 @@ POMDPs.isterminal(pomdp::binaryLifeDetectionPOMDP, s::Int) = (s == 3)
 
 # run sensor i (2+i)
 # declare dead (1) declare alive (2)
-POMDPs.actions(pomdp::binaryLifeDetectionPOMDP) = [1, 2, 3:2+pomdp.inst...]
+POMDPs.actions(pomdp::binaryLifeDetectionPOMDP) = [1, 2, 3:(2+pomdp.inst)...]
 
 # observe biosignature is present (1) or absent (2)
-POMDPs.observations(pomdp::binaryLifeDetectionPOMDP) = [1, 2] 
+POMDPs.observations(pomdp::binaryLifeDetectionPOMDP) = [1, 2]
 
 POMDPs.stateindex(pomdp::binaryLifeDetectionPOMDP, s::Int) = s
-POMDPs.actionindex(pomdp::binaryLifeDetectionPOMDP,a::Int) = a
-POMDPs.obsindex(pomdp::binaryLifeDetectionPOMDP, s::Int)   = s
+POMDPs.actionindex(pomdp::binaryLifeDetectionPOMDP, a::Int) = a
+POMDPs.obsindex(pomdp::binaryLifeDetectionPOMDP, s::Int) = s
 
 POMDPs.discount(pomdp::binaryLifeDetectionPOMDP) = pomdp.discount
 
@@ -48,7 +48,7 @@ function POMDPs.transition(pomdp::binaryLifeDetectionPOMDP, s::Int, a::Int)
     end
 end
 
-function POMDPs.observation(pomdp::binaryLifeDetectionPOMDP, a::Int,  sp::Int)
+function POMDPs.observation(pomdp::binaryLifeDetectionPOMDP, a::Int, sp::Int)
     # if we declare alive/dead, observation doesn't matter
     if POMDPs.isterminal(pomdp, sp) || a <= 2
         return SparseCat([1, 2], [0.5, 0.5])
@@ -63,10 +63,10 @@ function POMDPs.observation(pomdp::binaryLifeDetectionPOMDP, a::Int,  sp::Int)
     # get conditional probability P(child|parent)
     factor = pomdp.bn.factors[instrument_index+1]
     var_name = factor.vars[1].name
-    
+
     # get parent nodes (first var is child, rest are parents)
     parent_vars = factor.vars[2:end]
-    
+
     # build key with all parent assignments
     key = Dict(var_name => 2)  # start with child
     for parent_var in parent_vars
@@ -81,7 +81,7 @@ function POMDPs.observation(pomdp::binaryLifeDetectionPOMDP, a::Int,  sp::Int)
     end
 
     P_yes = factor.table[key] # Probability of "yes" observation for action a (a=2 means detected)
-    
+
     # Return a probability distribution over the two observations (1 = no, 2 = yes)
     return SparseCat([1, 2], [1 - P_yes, P_yes])
 end
@@ -90,26 +90,26 @@ function expected_belief_change(pomdp::binaryLifeDetectionPOMDP, a::Int)
     if a <= 2  # declare alive/dead
         return 0.0
     end
-    
+
     # map action to biosignature node in Bayesian network
     idx = a - 2
     if idx > length(pomdp.bn.factors)
         error("Invalid instrument action: $a")
     end
-    
+
     # get probabilities from Bayesian network CPT
     factor = pomdp.bn.factors[idx]
     var_name = factor.vars[1].name
-    
+
     # P(o|L) and P(o|!L)
     P_o_alive = factor.table[Dict(var_name => 2, :l => 2)]
     P_o_dead = factor.table[Dict(var_name => 2, :l => 1)]
-    
+
     # compute evidence P(o) 
     P_o = P_o_alive * pomdp.b + P_o_dead * (1 - pomdp.b)
-    
+
     # compute posterior P(L|o)
-    P_L_o = (P_o_alive * pomdp.b) / P_o 
+    P_L_o = (P_o_alive * pomdp.b) / P_o
 
     exp_change = abs(pomdp.b - P_L_o)
     #println("exp_change: ", exp_change)

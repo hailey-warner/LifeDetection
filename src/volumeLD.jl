@@ -9,32 +9,46 @@ function volumeLifeDetectionPOMDP(;
 	λ::Float64,
 	action_cpds::Dict,
 	max_obs::Int64,
-	inst::Int64 = 7, # number of instruments / not using instrument
-	sample_volume::Int64 = 500,
-	life_states::Int64 = 3,
-	acc_rate::Int64 = 270,
-	sample_use::Vector{Int64} = [1, 1, 1, 1, 1, 1, 1], # cost of observations
+	inst::Int64=7, # number of instruments / not using instrument
+	sample_volume::Int64=500,
+	life_states::Int64=3,
+	acc_rate::Int64=270,
+	sample_use::Vector{Int64}=[1, 1, 1, 1, 1, 1, 1], # cost of observations
 	# k::Vector{Float64} = [HRMS*10e6, SMS*10e6, μCE_LI*10e6, ESA*10e6, microscope*10e6, nanopore*10e6], # cost of observations
-	discount::Float64 = 0.9,
+	discount::Float64=0.9,
 )
-	return volumeLifeDetectionPOMDP(bn, λ, action_cpds, max_obs, inst, sample_volume, life_states, acc_rate, sample_use, discount)
+	return volumeLifeDetectionPOMDP(
+		bn,
+		λ,
+		action_cpds,
+		max_obs,
+		inst,
+		sample_volume,
+		life_states,
+		acc_rate,
+		sample_use,
+		discount,
+	)
 end
 
 # 1 -> dead
 # 2 -> alive
 # 3 -> terminal state
-POMDPs.states(pomdp::volumeLifeDetectionPOMDP) = 1:(pomdp.sample_volume*pomdp.life_states+pomdp.life_states) #(pomdp.sample_volume*((2^pomdp.life_states)))+(2^pomdp.life_states)
+POMDPs.states(pomdp::volumeLifeDetectionPOMDP) =
+	1:(pomdp.sample_volume*pomdp.life_states+pomdp.life_states) #(pomdp.sample_volume*((2^pomdp.life_states)))+(2^pomdp.life_states)
 
 # run sensor (2+i), where i the ith instrument, and the last instrument is doing nothing
 # declare dead (1) declare alive (2)
-POMDPs.actions(pomdp::volumeLifeDetectionPOMDP) = [1:pomdp.inst..., pomdp.inst+1, pomdp.inst+2]
+POMDPs.actions(pomdp::volumeLifeDetectionPOMDP) =
+	[1:pomdp.inst..., pomdp.inst+1, pomdp.inst+2]
 
 # Extra observation at end which will be null observation
-POMDPs.observations(pomdp::volumeLifeDetectionPOMDP) = 0:(pomdp.max_obs*(pomdp.sample_volume+1)) # pomdp.sample_volume*pomdp.life_states+pomdp.life_states+1 
+POMDPs.observations(pomdp::volumeLifeDetectionPOMDP) =
+	0:(pomdp.max_obs*(pomdp.sample_volume+1)) # pomdp.sample_volume*pomdp.life_states+pomdp.life_states+1 
 
-POMDPs.stateindex(pomdp::volumeLifeDetectionPOMDP, s::Int)  = s
+POMDPs.stateindex(pomdp::volumeLifeDetectionPOMDP, s::Int) = s
 POMDPs.actionindex(pomdp::volumeLifeDetectionPOMDP, a::Int) = a
-POMDPs.obsindex(pomdp::volumeLifeDetectionPOMDP, o::Int)    = o+1
+POMDPs.obsindex(pomdp::volumeLifeDetectionPOMDP, o::Int) = o+1
 
 
 # TODO: do we want to start with different states?
@@ -116,7 +130,10 @@ function POMDPs.observation(pomdp::volumeLifeDetectionPOMDP, a::Int, sp::Int)
 	# if we declare alive/dead, observation doesn't matter
 	# not choosing anything
 	# TODO: return null obs if sample_volume == 0?
-	if POMDPs.isterminal(pomdp, sp) || a == pomdp.inst + 1 || a == pomdp.inst + 2 || a == pomdp.inst #|| sample_volume == 0
+	if POMDPs.isterminal(pomdp, sp) ||
+	   a == pomdp.inst + 1 ||
+	   a == pomdp.inst + 2 ||
+	   a == pomdp.inst #|| sample_volume == 0
 		return Deterministic(0)
 	end
 
@@ -148,7 +165,10 @@ function POMDPs.observation(pomdp::volumeLifeDetectionPOMDP, a::Int, sp::Int)
 	# # Return a probability distribution over the new posterior of life (1 = no, 2 = yes)
 	# return SparseCat([ob1, ob2], [p_life[1], p_life[2]])
 
-	return SparseCat(obs_sample_volume(sample_volume, pomdp.max_obs), dist_observations(pomdp.action_cpds, life_state, a, pomdp.max_obs))
+	return SparseCat(
+		obs_sample_volume(sample_volume, pomdp.max_obs),
+		dist_observations(pomdp.action_cpds, life_state, a, pomdp.max_obs),
+	)
 end
 
 function expected_belief_change(pomdp::volumeLifeDetectionPOMDP, a::Int)
@@ -225,12 +245,15 @@ function dist_observations(action_cpds, life_state, action, max_obs)
 	"""
 	Returns the probabilities of observations for a given action and life state.
 	"""
-	posterior = infer(bn, action_cpds[action], evidence = (Assignment(:C0 => life_state)))
+	posterior = infer(bn, action_cpds[action], evidence=(Assignment(:C0 => life_state)))
 
 	probs = Float64[]  # P(obs | l=1)
 
 	# Determine domain sizes (bins per variable)
-	domain_sizes = [length(bn.cpds[bn.name_to_index[v]].distributions[1].p) for v in posterior.dimensions]
+	domain_sizes = [
+		length(bn.cpds[bn.name_to_index[v]].distributions[1].p) for
+		v in posterior.dimensions
+	]
 	obs_indices = collect(CartesianIndices(Tuple(domain_sizes)))
 
 	# -- Inference Loop --
@@ -256,10 +279,14 @@ function determine_max_obs(action_cpds)
 			probs = Float64[]
 
 			# P(obs | l=1)
-			posterior = infer(bn, action_cpds[action], evidence = (Assignment(:C0 => life_state)))
+			posterior =
+				infer(bn, action_cpds[action], evidence=(Assignment(:C0 => life_state)))
 
 			# determine domain sizes (bins per variable)
-			domain_sizes = [length(bn.cpds[bn.name_to_index[v]].distributions[1].p) for v in posterior.dimensions]
+			domain_sizes = [
+				length(bn.cpds[bn.name_to_index[v]].distributions[1].p) for
+				v in posterior.dimensions
+			]
 			obs_indices = collect(CartesianIndices(Tuple(domain_sizes)))
 
 			for i in obs_indices

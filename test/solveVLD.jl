@@ -9,36 +9,44 @@ using Plots
 # using Statistics, Clustering, Plots
 
 
-include("../src/bayesnet.jl")
+include("../src/bayes_net.jl")
 include("../src/volumeLD.jl")
 include("conops.jl")
 
 include("../src/common/plotting.jl")
 include("../src/common/simulate.jl")
 
-HRMS = 1   # mL organic compounds, just going to set to zero its too small
-SMS_1 = 20 # mL amino acid characerization
-SMS_2 = 20 # mL lipid characterization
-SMS = SMS_1 + SMS_2
-μCE_LIF = 2 #15 # μL #0.015 # mL # amino acid and lipid characterization
-ESA_1 = 2 #15 # μL #0.015  # mL # macronutrients
-ESA_2 = 5 #75 # μL #0.075  # mL # micronutrients
-ESA_3 = 2 #15 # μL #0.015  # mL # salinity
-ESA = ESA_1 + ESA_2 + ESA_3
-microscope = 1 # μL # 0.001 # mL # polyelectrolyte
-nanopore = 100 #10000 # μL # 10  # mL cell like morphologies
-none = 0
-acc_rate = 10 # 270 μL per day
 
+
+
+# Configuration
+const POLICY = "CONOPS"  # Options: "CONOPS" or "SARSOP"
+const SIMULATE = true    # Whether to run simulation after policy generation
+const PLOT_ALPHA_VECTORS = true  # Whether to plot alpha vectors for SARSOP policy
+const VERBOSE = true  # Whether to print verbose output
+
+HRMS = 1   # mL                                 organic compounds
+SMS_1 = 20 # μL                                 amino acid characerization
+SMS_2 = 20 # μL                                 lipid characterization
+SMS = SMS_1 + SMS_2
+μCE_LIF = 2 # μL                                ?
+ESA_1 = 2 # μL                                  macronutrients
+ESA_2 = 5 # μL                                  micronutrients
+ESA_3 = 2 # μL                                  salinity
+ESA = ESA_1 + ESA_2 + ESA_3
+microscope = 1 # μL                             polyelectrolyte
+nanopore = 100 # μL                             cell-like morphologies
+none = 0
+acc_rate = 10 # μL per day
 
 # Instrument Action to sample characteristics:
 action_cpds = Dict(
-	1 => [:C5, :C7, :C8, :C10],   # HRMS
-	2 => [:C5, :C6],              # SMS
-	3 => [:C5, :C6],              # μCE_LIF
-	4 => [:C7, :C8],              # ESA
-	5 => [:C2, :C3],              # microscope
-	6 => [:C1],                    # nanopore
+    1 => [:C5, :C7, :C8, :C10],   # HRMS
+    2 => [:C5, :C6],              # SMS
+    3 => [:C5, :C6],              # μCE_LIF
+    4 => [:C7, :C8],              # ESA
+    5 => [:C2, :C3],              # microscope
+    6 => [:C1],                    # nanopore
 )
 
 # Use a specific action
@@ -46,36 +54,36 @@ action_cpds = Dict(
 # max_obs = determine_max_obs(action_cpds) 
 # life_state = 2
 # dist_observations(action_to_cpds, life_state, action, max_obs)
-
 # ci = CartesianIndices(Tuple(domain_sizes))[11248]
 
-
 pomdp = volumeLifeDetectionPOMDP(
-	bn = bn, # inside /src/bayesnet_discrete.jl
-	λ = 0.99,
-	action_cpds = action_cpds,
-	max_obs = determine_max_obs(action_cpds),
-	inst = 7, # one extra for not choosing anything
-	sample_volume = 300,
-	life_states = 3,
-	acc_rate = acc_rate,
-	sample_use = [HRMS, SMS, μCE_LIF, ESA, microscope, nanopore, none],
-	discount = 0.9)
-
-# Running CONOPS:
-rewards, accuracy = simulate_policyVLD(pomdp, "policy", "conops", 1, true) # SARSOP or conops or greedy
-
-# Running SARSOP
-solver = SARSOPSolver(verbose = true, timeout = 100)
-@show_requirements POMDPs.solve(solver, pomdp)
-
-# policy = load_policy(pomdp,"policy.out")
-policy = solve(solver, pomdp)
-plot_alpha_vectors(policy)
-rewards, accuracy = simulate_policyVLD(pomdp, policy, "SARSOP", 100, false) # SARSOP or conops or greedy
-plot_alpha_vectors_VLD(policy, pomdp, 0)
+    bn=bn, # inside /src/bayes_net.jl
+    λ=0.99,
+    action_cpds=action_cpds,
+    max_obs=determine_max_obs(action_cpds),
+    inst=7, # one extra for not choosing anything
+    sample_volume=300,
+    life_states=3,
+    acc_rate=acc_rate,
+    sample_use=[HRMS, SMS, μCE_LIF, ESA, microscope, nanopore, none],
+    discount=0.9,
+)
 
 
+if POLICY == "SARSOP"
+    solver = SARSOPSolver(verbose=true, timeout=100)
+    policy = solve(solver, pomdp)
+    @show_requirements POMDPs.solve(solver, pomdp)
+
+    if PLOT_ALPHA_VECTORS
+        plot_alpha_vectors_VLD(policy, pomdp, 0)
+    end
+end
+
+if SIMULATE
+    rewards, accuracy =
+        simulate_policyVLD(pomdp, policy, POLICY, n_episodes=100, verbose=VERBOSE)
+end
 
 # verbose = true
 

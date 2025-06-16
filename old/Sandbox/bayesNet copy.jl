@@ -35,29 +35,37 @@ P_c = 0.50
 
 
 factors = [
-# Prior
-Factor([L], FactorTable((l=1,) => P_alive, (l=2,) => P_dead)),
+    # Prior
+    Factor([L], FactorTable((l=1,) => P_alive, (l=2,) => P_dead)),
 
-# Set factor table
-Factor([A,L], FactorTable(
-    (a=1,l=1) => P_a_alive, 
-    (a=2,l=1) => 1 - P_a_alive, 
-    (a=1,l=2) => P_a_dead, 
-    (a=2,l=2) => 1 - P_a_dead, 
-)),
-Factor([P,L], FactorTable(
-    (p=1,l=1) => P_p_alive, 
-    (p=2,l=1) => 1 - P_p_alive, 
-    (p=1,l=2) => P_p_dead, 
-    (p=2,l=2) => 1 - P_p_dead, 
-)),
-Factor([C,L], FactorTable(
-    (c=1,l=1) => P_c_alive, 
-    (c=2,l=1) => 1 - P_c_alive, 
-    (c=1,l=2) => P_c_dead, 
-    (c=2,l=2) => 1 - P_c_dead, 
-            
-))
+    # Set factor table
+    Factor(
+        [A, L],
+        FactorTable(
+            (a=1, l=1) => P_a_alive,
+            (a=2, l=1) => 1 - P_a_alive,
+            (a=1, l=2) => P_a_dead,
+            (a=2, l=2) => 1 - P_a_dead,
+        ),
+    ),
+    Factor(
+        [P, L],
+        FactorTable(
+            (p=1, l=1) => P_p_alive,
+            (p=2, l=1) => 1 - P_p_alive,
+            (p=1, l=2) => P_p_dead,
+            (p=2, l=2) => 1 - P_p_dead,
+        ),
+    ),
+    Factor(
+        [C, L],
+        FactorTable(
+            (c=1, l=1) => P_c_alive,
+            (c=2, l=1) => 1 - P_c_alive,
+            (c=1, l=2) => P_c_dead,
+            (c=2, l=2) => 1 - P_c_dead,
+        ),
+    ),
 ]
 
 graph = SimpleDiGraph(4)
@@ -67,5 +75,5 @@ add_edge!(graph, 1, 4)  # L → C
 
 bn = BayesianNetwork(vars, factors, graph)
 
-a = (l=2,a=1,p=1,c=1) 
+a = (l=2, a=1, p=1, c=1)
 probability(bn, Assignment(a))

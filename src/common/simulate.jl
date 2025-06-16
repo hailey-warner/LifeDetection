@@ -1,7 +1,9 @@
-function simulate_policyVLD(pomdp, policy, type = "SARSOP", n_episodes = 1, verbose = true)
+function simulate_policyVLD(pomdp, policy, type="SARSOP", n_episodes=1, verbose=true)
 
 	if verbose
-		println("--------------------------------START EPISODES---------------------------------")
+		println(
+			"--------------------------------START EPISODES---------------------------------",
+		)
 	end
 
 	total_episode_rewards = []
@@ -14,10 +16,14 @@ function simulate_policyVLD(pomdp, policy, type = "SARSOP", n_episodes = 1, verb
 		s = rand(initialstate(pomdp))
 
 		if verbose
-			println("\nPolicy Simulation: Episode ", episode)
+			println("\npolicy Simulation: Episode ", episode)
 			# println("Step | Action       | Observation | Belief(Life) | True State | Acc Sample | Total Reward ")
-			println("Step | Action        | Belief(Life) | True State | Acc Sample | Total Reward ")
-			println("-------------------------------------------------------------------------------")
+			println(
+				"Step | Action        | Belief(Life) | True State | Acc Sample | Total Reward ",
+			)
+			println(
+				"-------------------------------------------------------------------------------",
+			)
 		end
 		step = 1
 		total_reward = 0
@@ -35,9 +41,9 @@ function simulate_policyVLD(pomdp, policy, type = "SARSOP", n_episodes = 1, verb
 			# get action, next state, and observation
 			if type == "SARSOP"
 				a = action(policy, b)
-			elseif type == "greedy"
+			elseif type == "GREEDY"
 				a = action_greedy_policy(policy, b, step)
-			elseif type == "conops"
+			elseif type == "CONOPS"
 				a, modeAcc, prevAction = conopsOrbiter(pomdp, s, modeAcc, prevAction)
 			end
 
@@ -49,7 +55,9 @@ function simulate_policyVLD(pomdp, policy, type = "SARSOP", n_episodes = 1, verb
 			total_reward += r
 
 			# format action and observation names
-			action_name = a >= pomdp.inst+1 ? (a == pomdp.inst+1 ? "Declare Dead" : "Declare Life") : (a == pomdp.inst ? "Accumulate" : "Sensor $(a)")
+			action_name =
+				a >= pomdp.inst+1 ? (a == pomdp.inst+1 ? "Declare Dead" : "Declare Life") :
+				(a == pomdp.inst ? "Accumulate" : "Sensor $(a)")
 			accu, true_state = stateindex_to_state(s, pomdp.life_states)  # Save the current state before transitioning 
 			println("Obs: ", o)
 
@@ -77,8 +85,15 @@ function simulate_policyVLD(pomdp, policy, type = "SARSOP", n_episodes = 1, verb
 				# @printf("%3d  | %-12s | %-11s | %.3f        | %d          |  %d         | %.2f         \n", 
 				#         step, action_name, obs_name, belief_life, true_state, accu, total_reward)
 
-				@printf("%3d  | %-12s | %.3f        | %d          |  %d         | %.2f         \n",
-					step, action_name, belief_life, true_state, accu, total_reward)
+				@printf(
+					"%3d  | %-12s | %.3f        | %d          |  %d         | %.2f         \n",
+					step,
+					action_name,
+					belief_life,
+					true_state,
+					accu,
+					total_reward
+				)
 			end
 
 			# update belief
@@ -103,7 +118,7 @@ function simulate_policyVLD(pomdp, policy, type = "SARSOP", n_episodes = 1, verb
 	return mean(total_episode_rewards), mean(accuracy)
 end
 
-function decision_tree(pomdp, policy; max_depth = 3)
+function decision_tree(pomdp, policy; max_depth=3)
 	node_labels = String[]
 	edge_labels = String[]
 	edges = Tuple{Int, Int}[]
@@ -111,7 +126,12 @@ function decision_tree(pomdp, policy; max_depth = 3)
 	updater = DiscreteUpdater(pomdp)
 	b0 = initialize_belief(updater, initialstate(pomdp))
 
-	function traverse(b, parent_index::Union{Int, Nothing} = nothing, edge_label::Union{String, Nothing} = nothing, depth = 1)
+	function traverse(
+		b,
+		parent_index::Union{Int, Nothing}=nothing,
+		edge_label::Union{String, Nothing}=nothing,
+		depth=1,
+	)
 		# Determine action from the policy
 		a = action(policy, b)
 		b_val = pdf(b, 1)
@@ -148,20 +168,26 @@ function decision_tree(pomdp, policy; max_depth = 3)
 	return (node_labels, edge_labels, edges)
 end
 
-function simulate_policy(pomdp, policy, type = "SARSOP", n_episodes = 1; verbose = true)
+function simulate_policy(pomdp, policy, type="SARSOP", n_episodes=1; verbose=true)
 	total_episode_rewards = []
 	accuracy = []
 
 	if verbose
-		println("--------------------------------START EPISODES---------------------------------")
+		println(
+			"--------------------------------START EPISODES---------------------------------",
+		)
 	end
 
 	for episode in range(1, n_episodes)
 
 		if verbose
 			println("\nPolicy Simulation: Episode ", episode)
-			println("Step | Action       | Observation | Belief(Life) | True State | Total Reward ")
-			println("-------------------------------------------------------------------------------")
+			println(
+				"Step | Action       | Observation | Belief(Life) | True State | Total Reward ",
+			)
+			println(
+				"-------------------------------------------------------------------------------",
+			)
 		end
 
 		updater = DiscreteUpdater(pomdp)
@@ -188,14 +214,22 @@ function simulate_policy(pomdp, policy, type = "SARSOP", n_episodes = 1; verbose
 			total_reward += r
 
 			# format action and observation names
-			action_name = a ≤ 2 ? (a == 1 ? "Declare Dead" : "Declare Life") : "Sensor $(a-2)"
+			action_name =
+				a ≤ 2 ? (a == 1 ? "Declare Dead" : "Declare Life") : "Sensor $(a-2)"
 			obs_name = o == 1 ? "Negative" : "Positive"
 			true_state = s  # save the current state before transitioning
 
 			if verbose
 				# show step details
-				@printf("%3d  | %-12s | %-11s | %.3f        | %d          | %.2f         \n",
-					step, action_name, obs_name, pdf(b, 2), true_state, total_reward)
+				@printf(
+					"%3d  | %-12s | %-11s | %.3f        | %d          | %.2f         \n",
+					step,
+					action_name,
+					obs_name,
+					pdf(b, 2),
+					true_state,
+					total_reward
+				)
 			end
 
 			# update belief
@@ -209,7 +243,9 @@ function simulate_policy(pomdp, policy, type = "SARSOP", n_episodes = 1; verbose
 	end
 
 	if verbose
-		println("--------------------------------END EPISODES---------------------------------")
+		println(
+			"--------------------------------END EPISODES---------------------------------",
+		)
 		println("Average Rewards:", mean(total_episode_rewards))
 	end
 
@@ -218,7 +254,7 @@ end
 
 
 
-function make_decision_tree(pomdp, policy; max_depth = 3)
+function make_decision_tree(pomdp, policy; max_depth=3)
 	node_labels = String[]
 	edge_colors = String[]
 	edges = Tuple{Int, Int}[]
@@ -226,7 +262,12 @@ function make_decision_tree(pomdp, policy; max_depth = 3)
 	updater = DiscreteUpdater(pomdp)
 	b0 = initialize_belief(updater, initialstate(pomdp))
 
-	function traverse(b, parent_index::Union{Int, Nothing} = nothing, edge_color::Union{String, Nothing} = nothing, depth = 1)
+	function traverse(
+		b,
+		parent_index::Union{Int, Nothing}=nothing,
+		edge_color::Union{String, Nothing}=nothing,
+		depth=1,
+	)
 		a = action(policy, b)
 		b_val = pdf(b, 2)
 		action_name = a ≤ 2 ? (a == 1 ? "Dead" : "Alive") : "I$(a - 2)"

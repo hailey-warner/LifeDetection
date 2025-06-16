@@ -6,7 +6,7 @@ function POMDPs.reward(pomdp::LifeDetectionPOMDP, s, a)
     for health in s.inst_health
         reward -= pomdp.InstHealthMax-health
     end
-    
+
     reward -= (pomdp.SampleTrueVal - s.sample_certainty)^2
 
     return reward
