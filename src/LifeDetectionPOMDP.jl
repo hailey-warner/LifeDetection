@@ -3,17 +3,17 @@ using POMDPTools
 using BayesNet
 
 struct LifeDetectionPOMDP <: POMDP{Int, Int, Int}  # POMDP{State, Action, Observation}
-	bn::DiscreteBayesNet # Bayesian Network,
-	λ::Float64
-	action_cpds::Dict
-	max_obs::Int64
-	inst::Int64 # number of instruments (child nodes)
-	sample_volume::Int64
-	life_states::Int64
-	acc_rate::Int64
-	sample_use::Vector{Int64}
-	# k::Vector{Float64} # cost of observations
-	discount::Float64
+	bn::DiscreteBayesNet 			# Bayesian Network,
+	λ::Float64						# Parameter for penalty
+	ACTION_CPDS::Dict				# Connecting actions to CPDS
+	max_obs::Int64					# Maximum observation count for observation generator
+	inst::Int64 					# Number of instruments + accumulation action
+	sample_volume::Int64			# Maximum Sample Volume in Storage Container
+	life_states::Int64				# Life States (3)
+	ACC_RATE::Int64					# Accumulation Rate
+	sample_use::Vector{Int64}		# Sample used by each of the instruments
+	# k::Vector{Float64} 			# Cost of observations
+	discount::Float64				# Discount over time
 end
 
 
@@ -21,12 +21,12 @@ end
 function LifeDetectionPOMDP(;
 	bn::DiscreteBayesNet, # Bayesian Network,
 	λ::Float64,
-	action_cpds::Dict,
+	ACTION_CPDS::Dict,
 	max_obs::Int64,
 	inst::Int64=7, # number of instruments / not using instrument
 	sample_volume::Int64=500,
 	life_states::Int64=3,
-	acc_rate::Int64=270,
+	ACC_RATE::Int64=270,
 	sample_use::Vector{Int64}=[1, 1, 1, 1, 1, 1, 1], # cost of observations
 	# k::Vector{Float64} = [HRMS*10e6, SMS*10e6, μCE_LI*10e6, ESA*10e6, microscope*10e6, nanopore*10e6], # cost of observations
 	discount::Float64=0.9,
@@ -40,10 +40,10 @@ end
 POMDPs.states(pomdp::LifeDetectionPOMDP) = 1:(pomdp.sample_volume*pomdp.life_states+pomdp.life_states) #(pomdp.sample_volume*((2^pomdp.life_states)))+(2^pomdp.life_states)
 
 # run sensor (2+i), where i the ith instrument, and the last instrument is doing nothing
-# declare dead (1) declare alive (2)
+# declare dead (second to last) declare alive (last action)
 POMDPs.actions(pomdp::LifeDetectionPOMDP) = [1:pomdp.inst..., pomdp.inst+1, pomdp.inst+2]
 
-# Extra observation at end which will be null observation
+# Extra observation at beginning which will be null observation
 POMDPs.observations(pomdp::LifeDetectionPOMDP) = 0:(pomdp.max_obs*(pomdp.sample_volume+1)) # pomdp.sample_volume*pomdp.life_states+pomdp.life_states+1 
 
 POMDPs.stateindex(pomdp::LifeDetectionPOMDP, s::Int)  = s
@@ -51,9 +51,9 @@ POMDPs.actionindex(pomdp::LifeDetectionPOMDP, a::Int) = a
 POMDPs.obsindex(pomdp::LifeDetectionPOMDP, o::Int)    = o+1
 
 
-# TODO: do we want to start with different states?
-POMDPs.initialstate(pomdp::LifeDetectionPOMDP) = DiscreteUniform(1, 2) # 50% chance of being alive or dead with no starting sample    
+# TODO: do we want to start with different states? With different accumulations? (YES)
 # state_to_stateindex(0, 1) # TODO: change in future, so it starts at any state
+POMDPs.initialstate(pomdp::LifeDetectionPOMDP) = DiscreteUniform(1, 2) # 50% chance of being alive or dead with no starting sample    
 
 function POMDPs.isterminal(pomdp::LifeDetectionPOMDP, s::Int)
 	sample_volume, life_state = stateindex_to_state(s, pomdp.life_states)
@@ -65,7 +65,6 @@ function POMDPs.isterminal(pomdp::LifeDetectionPOMDP, s::Int)
 end
 
 POMDPs.discount(pomdp::LifeDetectionPOMDP) = pomdp.discount
-
 
 function POMDPs.transition(pomdp::LifeDetectionPOMDP, s::Int, a::Int)
 	sample_volume, life_state = stateindex_to_state(s, pomdp.life_states)
@@ -97,47 +96,19 @@ function POMDPs.observation(pomdp::LifeDetectionPOMDP, a::Int, sp::Int)
 
 	sample_volume, life_state = stateindex_to_state(sp, pomdp.life_states)
 
-
 	# return null observation if...
 	# terminal state
 	# declare alive/dead
 	# not using instrument
-	# TODO: sample volume is 0 ?
+	# TODO: sample volume is 0 ? (I dont think this worked - GK)
 	if POMDPs.isterminal(pomdp, sp) || a == pomdp.inst + 1 || a == pomdp.inst + 2 || a == pomdp.inst #|| sample_volume == 0
 		return Deterministic(0)
 	end
 
-	# # Sample first, then do infer to get posterior?
-
-	# # Instrument Action to sample characteristics:
-	# action_to_cpds = Dict(
-	#     1 => [3, 5, 6, 10],   # HRMS >> Salinity (index 3), Path Complexity Index (5), CHNOPS (index 6), and redox (index 10)
-	#     2 => [4, 7],       # SMS >> Chirality (index 4), Amino Acid Abundance (7)
-	#     3 => [4, 7],       # μCE_LI >> Chirality (index 4), Amino Acid Abundance (7)
-	#     4 => [3, 6],       # ESA >> Salinity (index 3), CHNOPS (index 6)
-	#     5 => [8, 9],      # microscope >> Cell Membrane (8), autofluorescence (9)
-	#     6 => [2],      # nanopore >> Polyelectrolyte (index 2)
-	# )
-	# # Get the specific sample indicies for action selected
-	# cpd_indices = action_to_cpds[a]
-	# evidence_dict = Dict()  # Start with life state as evidence
-
-	# # For each CPD index, sample and add to evidence
-	# for idx in cpd_indices
-	#     posterior = infer(bn, bn.cpds[idx].target, evidence=Assignment(Dict(:l => life_state)))# Start with life state as evidence
-	#     sample = rand(Categorical(convert(DataFrame, posterior)[!,"potential"]))
-	#     evidence_dict[bn.cpds[idx].target] = sample
-	# end
-
-	# # All this is saying is: bn.cpds[1].target = :l
-	# p_life = infer(bn, bn.cpds[1].target, evidence=Assignment(evidence_dict))
-
-	# # Return a probability distribution over the new posterior of life (1 = no, 2 = yes)
-	# return SparseCat([ob1, ob2], [p_life[1], p_life[2]])
-
 	return SparseCat(obs_sample_volume(sample_volume, pomdp.max_obs), dist_observations(pomdp.action_cpds, life_state, a, pomdp.max_obs))
 end
 
+# TODO: incorporate expected change in belief
 function expected_belief_change(pomdp::LifeDetectionPOMDP, a::Int)
 	if a >= pomdp.inst  # not using instrument
 		return 0.0
@@ -185,7 +156,7 @@ function POMDPs.reward(pomdp::LifeDetectionPOMDP, s::Int, a::Int)
 	end
 
 	# sensing cost scaled by volume used
-	# expected_change = expected_belief_change(pomdp, s, a)
+	# TODO: expected_change = expected_belief_change(pomdp, s, a)
 	return -(1 - pomdp.λ) * (sample_volume/pomdp.sample_volume) #+ expected_change
 end
 
