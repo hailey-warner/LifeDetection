@@ -8,7 +8,7 @@ using Graphs
 # using TikzPictures
 
 
-
+# TODO: Need to fix alpha plots, and Decision tree plots
 function dominating_alphas(policy::AlphaVectorPolicy)
     num_vectors = size(policy.alphas, 1)
     num_samples = 101  # or infer from alpha size
@@ -139,4 +139,48 @@ function plot_belief_over_time(b_hist, a_hist; pomdp=nothing)
     savefig(p, "./figures/belief_over_time.png")
     display(p)
     return p
+end
+
+
+
+
+
+function make_decision_tree(pomdp, policy; max_depth=3)
+	node_labels = String[]
+	edge_colors = String[]
+	edges = Tuple{Int, Int}[]
+
+	updater = DiscreteUpdater(pomdp)
+	b0 = initialize_belief(updater, initialstate(pomdp))
+
+	function traverse(b, parent_index::Union{Int, Nothing}=nothing, edge_color::Union{String, Nothing}=nothing, depth=1)
+		a = action(policy, b)
+		b_val = pdf(b, 2)
+		action_name = a ≤ 2 ? (a == 1 ? "Dead" : "Alive") : "I$(a - 2)"
+		label = "$(action_name), P(life)=$(round(b_val, digits=2))"
+		push!(node_labels, label)
+		current_index = length(node_labels)
+
+		# record edge if a parent exists
+		if parent_index !== nothing && edge_color !== nothing
+			push!(edge_colors, edge_color)
+			push!(edges, (parent_index, current_index))
+		end
+
+		# stop if we've reached max depth or if action is terminal
+		if depth >= max_depth || a ≤ 2
+			return
+		end
+
+		# branch for each observation
+		for o in POMDPs.observations(pomdp)
+			obs_name = o == 1 ? "red" : "green"
+			b_new = update(updater, b, a, o)
+			traverse(b_new, current_index, obs_name, depth+1)
+		end
+	end
+
+	traverse(b0)
+	edge_colors = Dict(zip(edges, edge_colors))
+	return (node_labels, edge_colors, edges)
 end

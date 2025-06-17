@@ -1,3 +1,5 @@
+## TODO NEED TO CLEAN:::
+
 using Pkg
 Pkg.activate("wandb")
 using Wandb
@@ -16,7 +18,7 @@ final_belief = []
 
 #range(0,1,11)
 #range(0.99,0.999,10)
-for λ in range(0,1,11)#range(0.96,0.99,4)#range(0.55,0.95,5)#range(0.0,1.0,11)
+for λ in range(0,1,2)#range(0.96,0.99,4)#range(0.55,0.95,5)#range(0.0,1.0,11)
     accuracy_avg_temp = []
     sensor_usage_temp = []
     final_belief_temp = []

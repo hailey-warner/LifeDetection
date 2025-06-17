@@ -1,4 +1,69 @@
+WANDB = false
 
+# More for simulation
+POLICY = "SARSOP" # "CONOPS" "GREEDY" "SARSOP
+VERBOSE = true
+POLICYLOAD = true
+EPISODES = 1
+
+# These parameters dictate: range(0.99,0.999,10)
+# if you only want to run 1 run:
+# set λ_START and λ_END to same value and λ_SWEEP as 1 
+λ_START = 0
+λ_END = 0
+λ_SWEEP = 1
+
+# Additional Parameter to change in testing
+DISCOUNT = 0.9
+
+# Parameters to change for additional testing / off nominal testing
+ACC_RATE = 10               # 270 μL per day
+SAMPLE_MAX_CHAMBER = 100
+
+NUM_INSTRUMENTS = 7 # One extra for accumulate, Wouldn't change unless you change Bayes Net and Action CPDS
+LIFE_STATES = 3
+
+##################### General Parameters for Instrument Sample Usage #####################
+
+HRMS = 1                    #0 # 0.5e-6 # mL # organic compounds, just going to set to zero its too small
+SMS_1 = 20                  #400 # μL # 0.4 # mL # amino acid characerization
+SMS_2 = 20                  #100 # μL # 0.1 mL # Lipid Characterization
+SMS = SMS_1 + SMS_2
+μCE_LIF = 2                 #15 # μL #0.015 # mL # amino acid and lipid characterization
+ESA_1 = 2                   #15 # μL #0.015  # mL # macronutrients
+ESA_2 = 5                   #75 # μL #0.075  # mL # micronutrients
+ESA_3 = 2                   #15 # μL #0.015  # mL # salinity
+ESA = ESA_1 + ESA_2 + ESA_3
+microscope = 1              # μL # 0.001 # mL # polyelectrolyte
+nanopore = 100              #10000 # μL # 10  # mL cell like morphologies
+none = 0
+
+##################### Mapping Instrument Actions to sample characteristics #####################
+
+ACTION_CPDS = Dict(
+	1 => [:C5, :C7, :C8, :C10],   # HRMS ()
+	2 => [:C5, :C6],              # SMS
+	3 => [:C5, :C6],              # μCE_LIF
+	4 => [:C7, :C8],              # ESA
+	5 => [:C2, :C3],              # microscope
+	6 => [:C1],                    # nanopore
+)
+
+
+##################### Libraries #####################
+
+using Pkg
+# if WANDB
+Pkg.activate("wandbPkg")
+Pkg.instantiate()
+using Wandb
+using Logging
+# else
+#     Pkg.activate("LifeDetectionPkg")
+#     Pkg.instantiate()
+# end
+
+# Libraries
 using POMDPs
 using POMDPTools
 using Printf
@@ -6,69 +71,102 @@ using SARSOP
 using POMDPLinter
 using Distributions
 
-include("../src/bayesNet_old.jl")
-include("../src/binaryLD.jl")
-include("../src/common/plotting.jl")
+##################### Additional Files #####################
+
+# Including Bayesnet & base files for running POMDP and simulation
+include("../src/bayes_net.jl")
+include("../src/LifeDetectionPOMDP.jl")
 include("../src/common/simulate.jl")
 include("../src/common/utils.jl")
-include("greedy.jl")
 
+# Alternative Baseline Policies
+include("../src/policies/conops.jl") # TODO: EDIT Doesn't work
+include("../src/policies/greedy.jl") # TODO: EDIT Doesn't work
 
-NUM_INSTRUMENTS = 4
-SENSOR_COST     = [0.1, 0.8, 0.6, 0.2]
-BAYES_NET       = true
-DECISION_TREE   = true
-ALPHA_VECTORS   = true
-PARETO_FRONTIER = true
-
-# define bayesian network
-nodes         = [(:l, 2), (:a, 2), (:p, 2), (:c, 2), (:h, 2), (:i, 2)]
-dependencies  = [(:l, :a), (:l, :p), (:l, :c), (:a, :h), (:a, :i), (:p, :i), (:c, :i)]
-probability_table = [
-    ([:l], [(l=1,) => 0.5, (l=2,) => 0.5]),
-    ([:a, :l], [(a=1, l=1) => 0.9,  (a=2, l=1) => 0.1,  (a=1, l=2) => 0.05, (a=2, l=2) => 0.95]),
-    ([:p, :l], [(p=1, l=1) => 0.7,  (p=2, l=1) => 0.3,  (p=1, l=2) => 0.2,  (p=2, l=2) => 0.8 ]),
-    ([:c, :l], [(c=1, l=1) => 0.75, (c=2, l=1) => 0.25, (c=1, l=2) => 0.3,  (c=2, l=2) => 0.7 ]),
-    ([:h, :a], [(h=1, a=1) => 0.9,  (h=2, a=1) => 0.1,  (h=1, a=2) => 0.15, (h=2, a=2) => 0.85]),
-    ([:i, :a], [(i=1, a=1) => 0.7,  (i=2, a=1) => 0.3,  (i=1, a=2) => 0.6,  (i=2, a=2) => 0.4 ]),
-    ([:i, :p], [(i=1, p=1) => 0.8,  (i=2, p=1) => 0.2,  (i=1, p=2) => 0.9,  (i=2, p=2) => 0.1 ]),
-    ([:i, :c], [(i=1, c=1) => 0.8,  (i=2, c=1) => 0.2,  (i=1, c=2) => 0.7,  (i=2, c=2) => 0.3 ]),
-    ]
-
-bn = bayes_net(nodes, dependencies, probability_table)
-pomdp = binaryLifeDetectionPOMDP(inst=NUM_INSTRUMENTS, bn=bn, λ=20,  k=SENSOR_COST, discount=0.9)
-solver = SARSOPSolver(verbose=true, timeout=100)
-policy = solve(solver, pomdp)
-
-if BAYES_NET == true
-    plot_bayes_net(bn)
+if WANDB
+    include("../src/common/plotting_Wandb.jl")
 end
 
-if DECISION_TREE == true
-    tree_data = make_decision_tree(pomdp, policy)
-    plot_decision_tree(tree_data)
-end
-if ALPHA_VECTORS == true
-    plot_alpha_vectors(policy)
-end
+##################### Start of the experiment sweeps #####################
 
-if PARETO_FRONTIER == true
-    end_λ = 20
-    reward_list = []
-    acc_list = []
-    for λ in range(1, end_λ)
-        pomdp = binaryLifeDetectionPOMDP(inst=NUM_INSTRUMENTS, bn=bn, λ=λ,  k=SENSOR_COST, discount=0.9)
-        solver = SARSOPSolver(verbose=true, timeout=100)
-        policy = solve(solver, pomdp)
-        rewards, accuracy = simulate_policy(pomdp, policy, "SARSOP", 200, verbose=false) # SARSOP or greedy
-        push!(reward_list, rewards)
-        push!(acc_list, accuracy)
+for lambda in range(λ_START, λ_END, λ_SWEEP) 
+
+    # TODO: add more for loops for different things we want to test
+
+    # Generate new POMDP for each change in parameters
+	pomdp = LifeDetectionPOMDP(
+		bn=bn, # inside /src/bayesnet_discrete.jl
+		λ=lambda,
+		ACTION_CPDS=ACTION_CPDS,
+		max_obs=determineMaxObs(ACTION_CPDS,bn),
+		inst= NUM_INSTRUMENTS, 
+		sample_volume=SAMPLE_MAX_CHAMBER,
+		life_states=LIFE_STATES,
+		ACC_RATE=ACC_RATE,
+		sample_use=[HRMS, SMS, μCE_LIF, ESA, microscope, nanopore, none],
+		discount=DISCOUNT)
+
+	project_name = "Sweep_0.05Penalty_FalseNegatives_lambda_$(pomdp.λ)_sample_$(pomdp.sample_volume)_discount$(pomdp.discount)"
+
+    if WANDB
+        # using PyCall
+        # Start a new wandb run to track this script.
+        run = WandbLogger( #Wandb.wandb.init(
+            # Set the wandb entity where your project will be logged (generally your team name).
+            entity="sherpa-rpa",
+            # Set the wandb project where this run will be logged.
+            project=project_name,
+            # Track hyperparameters and run metadata.
+            config=Dict(
+                "bayesnet" => pomdp.bn,
+                "lambda" => pomdp.λ,
+                "ACTION_CPDS" => pomdp.ACTION_CPDS,
+                "max_obs" => pomdp.max_obs,
+                "inst" => pomdp.inst,
+                "sample_volume" => pomdp.sample_volume,
+                "life_states" => pomdp.life_states,
+                "ACC_RATE" => pomdp.ACC_RATE,
+                "sample_use" => pomdp.sample_use,
+                "discount" => pomdp.discount,
+            ),
+        )
     end
-    x = range(1, end_λ)
-    p1 = scatter(x, reward_list, color=:blue, xlabel="λ", ylabel="Reward Value", title="Reward", label="rewards")
-    p2 = scatter(x, acc_list, color=:red, xlabel="λ", ylabel="Accuracy (0 to 1)", title="Accuracy", label="Accuracy")
-    p = Plots.plot(p1, p2, layout=(1, 2), size=(800, 400), title="Pareto Frontier")
-    savefig(p, "./figures/pareto_frontier.png")
+
+    if POLICY == "CONOPS"
+	    # Running CONOPS:
+        rewards, accuracy = simulate_policyVLD(pomdp, "policy", "CONOPS", EPISODES, VERBOSE, WANDB, project_name) # SARSOP or conops or greedy
+
+    elseif POLICY == "SARSOP"
+
+        # Running SARSOP
+        solver = SARSOPSolver(verbose=true, timeout=100)
+        # @show_requirements POMDPs.solve(solver, pomdp)
+        
+        if POLICYLOAD
+            policy = load_policy(pomdp,"policy.out")
+        else
+            policy = solve(solver, pomdp)
+        end
+
+        if WANDB
+            Wandb.wandb.save("model.pomdpx")
+            Wandb.wandb.save("policy.out")
+            sleep(1)
+            plot_alpha_dots(policy)
+            Wandb.wandb.save("figures/plot_alpha_dots.png")
+
+            close(run)
+        end
+
+	    rewards, accuracy = simulate_policyVLD(pomdp, policy, "SARSOP", EPISODES, VERBOSE, WANDB, project_name) # SARSOP or conops or greedy
+
+    elseif POLICY == "GREEDY"
+	    rewards, accuracy = simulate_policyVLD(pomdp, "policy", "GREEDY", EPISODES, VERBOSE, WANDB, project_name) # SARSOP or conops or greedy
+
+    else
+        println("No Valid Policy Selected")
+    end
+
 end
 
-# @show_requirements POMDPs.solve(solver, pomdp)
+

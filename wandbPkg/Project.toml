@@ -1,0 +1,13 @@
+[deps]
+BayesNets = "ba4760a4-c768-5bed-964b-cf806dc591cb"
+Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"
+Logging = "56ddb016-857b-54e1-b83d-db4d58db5568"
+POMDPLinter = "f3bd98c0-eb40-45e2-9eb1-f2763262d755"
+POMDPTools = "7588e00f-9cae-40de-98dc-e0c70c48cdd7"
+POMDPs = "a93abf59-7444-517b-a68a-c42f96afdd7d"
+Plots = "91a5bcdd-55d7-5caf-9e0b-520d859cae80"
+Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
+PythonCall = "6099a3de-0909-46bc-b1f4-468b9a2dfc0d"
+SARSOP = "cef570c6-3a94-5604-96b7-1a5e143043f2"
+Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
+Wandb = "ad70616a-06c9-5745-b1f1-6a5f42545108"

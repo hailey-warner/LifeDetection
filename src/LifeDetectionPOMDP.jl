@@ -1,6 +1,5 @@
 using POMDPs # TODO: check if i can delete this
 using POMDPTools
-using BayesNet
 
 struct LifeDetectionPOMDP <: POMDP{Int, Int, Int}  # POMDP{State, Action, Observation}
 	bn::DiscreteBayesNet 			# Bayesian Network,
@@ -76,7 +75,7 @@ function POMDPs.transition(pomdp::LifeDetectionPOMDP, s::Int, a::Int)
 
 	# Accumulation action → randomize life state (biotic or abiotic)
 	if a == pomdp.inst
-		sample_volume = min(sample_volume + pomdp.acc_rate, pomdp.sample_volume)
+		sample_volume = min(sample_volume + pomdp.ACC_RATE, pomdp.sample_volume)
 
 		# update life state randomly (based on BN prior)
 		P_life = pomdp.bn.cpds[1].distributions[1].p[2]
@@ -105,7 +104,7 @@ function POMDPs.observation(pomdp::LifeDetectionPOMDP, a::Int, sp::Int)
 		return Deterministic(0)
 	end
 
-	return SparseCat(obs_sample_volume(sample_volume, pomdp.max_obs), dist_observations(pomdp.action_cpds, life_state, a, pomdp.max_obs))
+	return SparseCat(obs_sample_volume(sample_volume, pomdp.max_obs), distObservations(pomdp.ACTION_CPDS, life_state, a, pomdp.max_obs))
 end
 
 # TODO: incorporate expected change in belief
@@ -120,7 +119,7 @@ function expected_belief_change(pomdp::LifeDetectionPOMDP, a::Int)
 	prior = infer(pomdp.bn, :C0).potential[2]
 
 	# get nodes for this action
-	nodes = pomdp.action_cpds[a]
+	nodes = pomdp.ACTION_CPDS[a]
 	for node in nodes
 		for obs in 1:pomdp.max_obs
 			# P(L=true | obs)
