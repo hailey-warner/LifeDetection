@@ -2,17 +2,18 @@ using POMDPs # TODO: check if i can delete this
 using POMDPTools
 
 struct LifeDetectionPOMDP <: POMDP{Int, Int, Int}  # POMDP{State, Action, Observation}
-	bn::DiscreteBayesNet 			# Bayesian Network,
-	λ::Float64						# Parameter for penalty
-	ACTION_CPDS::Dict				# Connecting actions to CPDS
-	max_obs::Int64					# Maximum observation count for observation generator
-	inst::Int64 					# Number of instruments + accumulation action
-	sample_volume::Int64			# Maximum Sample Volume in Storage Container
-	life_states::Int64				# Life States (3)
-	ACC_RATE::Int64					# Accumulation Rate
-	sample_use::Vector{Int64}		# Sample used by each of the instruments
+	bn::DiscreteBayesNet # Bayesian Network,
+	λ::Float64# Parameter for penalty
+	τ::Float64# Parameter for declaring abiotic
+	ACTION_CPDS::Dict# Connecting actions to CPDS
+	max_obs::Int64# Maximum observation count for observation generator
+	inst::Int64 # Number of instruments + accumulation action
+	sample_volume::Int64# Maximum Sample Volume in Storage Container
+	life_states::Int64# Life States (3)
+	ACC_RATE::Int64# Accumulation Rate
+	sample_use::Vector{Int64}# Sample used by each of the instruments
 	# k::Vector{Float64} 			# Cost of observations
-	discount::Float64				# Discount over time
+	discount::Float64# Discount factor
 end
 
 
@@ -20,6 +21,7 @@ end
 function LifeDetectionPOMDP(;
 	bn::DiscreteBayesNet, # Bayesian Network,
 	λ::Float64,
+	τ::Float64,
 	ACTION_CPDS::Dict,
 	max_obs::Int64,
 	inst::Int64=7, # number of instruments / not using instrument
@@ -30,7 +32,7 @@ function LifeDetectionPOMDP(;
 	# k::Vector{Float64} = [HRMS*10e6, SMS*10e6, μCE_LI*10e6, ESA*10e6, microscope*10e6, nanopore*10e6], # cost of observations
 	discount::Float64=0.9,
 )
-	return LifeDetectionPOMDP(bn, λ, ACTION_CPDS, max_obs, inst, sample_volume, life_states, ACC_RATE, sample_use, discount)
+	return LifeDetectionPOMDP(bn, λ, τ, ACTION_CPDS, max_obs, inst, sample_volume, life_states, ACC_RATE, sample_use, discount)
 end
 
 # 1 -> dead
@@ -145,7 +147,7 @@ function POMDPs.reward(pomdp::LifeDetectionPOMDP, s::Int, a::Int)
 	sample_volume, life_state = stateindex_to_state(s, pomdp.life_states)
 
 	if a == pomdp.inst + 1  # declare abiotic
-		return life_state == 1 ? -0.05*pomdp.λ : -pomdp.λ
+		return life_state == 1 ? -pomdp.τ*pomdp.λ : -pomdp.λ
 	elseif a == pomdp.inst + 2  # declare biotic
 		return life_state == 2 ? 0 : -pomdp.λ
 	end

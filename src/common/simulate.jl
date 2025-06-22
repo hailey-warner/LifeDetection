@@ -20,6 +20,7 @@ function simulate_policyVLD(pomdp, policy, type="SARSOP", n_episodes=1, verbose=
 				config=Dict(
 					"bayesnet" => pomdp.bn,
 					"lambda" => pomdp.λ,
+					"tau" => pomdp.τ,
 					"ACTION_CPDS" => pomdp.ACTION_CPDS,
 					"max_obs" => pomdp.max_obs,
 					"inst" => pomdp.inst,
@@ -27,7 +28,7 @@ function simulate_policyVLD(pomdp, policy, type="SARSOP", n_episodes=1, verbose=
 					"life_states" => pomdp.life_states,
 					"ACC_RATE" => pomdp.ACC_RATE,
 					"sample_use" => pomdp.sample_use,
-					"discount" => pomdp.discount,
+					"gamma" => pomdp.discount,
 				),
 			)
 		end
