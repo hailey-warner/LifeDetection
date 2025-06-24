@@ -1,5 +1,6 @@
 using Plots
 using Graphs
+using LaTeXStrings
 
 function plot_alpha_action_heatmap(policy)
 	num_vectors = size(policy.alphas, 1)
@@ -46,14 +47,24 @@ function plot_alpha_action_heatmap(policy)
 		"#d73027",  # 8: strong red
 		"#4575b4",   # 9: strong blue
 	], categorical=true)
+
+	# Define tick positions in the *middle* of each discrete color block
+	tick_positions = collect(1:9) .- 0.5
+	tick_labels = string(1:9)
 	p = heatmap(
 		1:num_samples, b_vals,dominating',
 		xlabel="Sample Volume",
 		ylabel="Belief in Life (P(life=1))",
 		# title="Belief in Life (P(life=1))",
-		colorbar_title="Action",
+		colorbar_title=L"\textrm{Actions:  } \{a_1, ... a_9\} ",
 		color = discrete_colors,
-		clims = (1, 9),  # Important: avoids color blending
+    	colorbar_ticks = (tick_positions, tick_labels),
+		clims = (0.5, 9.5),  # Important: avoids color blending
+		fontfamily = "Computer Modern",
+		guidefont = font(16, "Computer Modern"),    # Axis labels font size 20
+		tickfont = font(12, "Computer Modern"),     # Tick labels font size 16
+		legendfont = font(16, "Computer Modern"),   # Legend font size 18
+		titlefont = font(20, "Computer Modern"),     # Title font size 24
 	)
 	if !isdir("./figures")
 		mkpath("./figures")

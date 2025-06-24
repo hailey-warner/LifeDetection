@@ -163,6 +163,7 @@ for lambda in range(λ_START, λ_END, λ_SWEEP)
 					plot_alpha_dots(policy)
 					plot_alpha_heatmap(policy)
 					Wandb.wandb.save("figures/plot_alpha_dots.png")
+					Wandb.wandb.save("figures/plot_alpha_action_heatmap.png")
 
 					close(run)
 				end

@@ -1,6 +1,7 @@
 [deps]
 BayesNets = "ba4760a4-c768-5bed-964b-cf806dc591cb"
 Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"
+LaTeXStrings = "b964fa9f-0449-5b57-a5c2-d3ea65f4040f"
 Logging = "56ddb016-857b-54e1-b83d-db4d58db5568"
 POMDPLinter = "f3bd98c0-eb40-45e2-9eb1-f2763262d755"
 POMDPTools = "7588e00f-9cae-40de-98dc-e0c70c48cdd7"
