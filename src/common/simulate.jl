@@ -142,6 +142,11 @@ function simulate_policyVLD(pomdp, policy, type="SARSOP", n_episodes=1, verbose=
 			action_final = a-pomdp.inst
 		end
 
+		println(action_final)
+		acc = (action_final == true_state ? 1 : 0)
+		push!(total_episode_rewards, total_reward)
+		push!(accuracy, acc)
+
 		if wandb
 			Wandb.wandb.summary["action_final"] = a
 			Wandb.wandb.summary["action_final_name"] = action_name
@@ -149,16 +154,13 @@ function simulate_policyVLD(pomdp, policy, type="SARSOP", n_episodes=1, verbose=
 			Wandb.wandb.summary["s_final"] = true_state
 			Wandb.wandb.summary["sp_final"] = sp
 			Wandb.wandb.summary["total_reward_final"] = total_reward
-			Wandb.wandb.summary["accuracy_final"] = (action_final == true_state ? 1 : 0)
+			Wandb.wandb.summary["false_positive_rate"] = (action_final == 1 ? 1 : 0)
+			Wandb.wandb.summary["false_negative_rate"] = (action_final == 2 ? 1 : 0)
 
 			close(run)
 			sleep(0.3)
 		end
 
-		println(action_final)
-		acc = (action_final == true_state ? 1 : 0)
-		push!(total_episode_rewards, total_reward)
-		push!(accuracy, acc)
 	end
 
 	println("--------------------------------END EPISODES---------------------------------")
