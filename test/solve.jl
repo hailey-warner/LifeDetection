@@ -2,19 +2,19 @@
 WANDB = true
 POLICY = "SARSOP" # "CONOPS" "GREEDY" "SARSOP
 VERBOSE = true
-POLICYLOAD = true
+POLICYLOAD = false
 EPISODES = 1
 
 # These parameters dictate: range(START, END, SWEEP)
 # if you only want to run 1 run, set START and END to same value and SWEEP as 1 
 
 # incorrect penalty
-λ_START = 0
-λ_END = 0
+λ_START = .99998
+λ_END = .99998
 λ_SWEEP = 1
 # declare abiotic penalty
-τ_START = 0
-τ_END = 0
+τ_START = 0.05
+τ_END = 0.05
 τ_SWEEP = 1
 # discount factor
 γ_START = 0.9
@@ -95,7 +95,7 @@ end
 
 for lambda in range(λ_START, λ_END, λ_SWEEP)
 	for tau in range(τ_START, τ_END, τ_SWEEP)
-		for gamma in range(γ_START, γ_END, y_SWEEP)
+		for gamma in range(γ_START, γ_END, γ_SWEEP)
 
 			# TODO: add more for loops for different things we want to test
 
