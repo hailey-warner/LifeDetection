@@ -2,15 +2,15 @@
 WANDB = true
 POLICY = "SARSOP" # "CONOPS" "GREEDY" "SARSOP
 VERBOSE = true
-POLICYLOAD = false
+POLICYLOAD = true
 EPISODES = 1
 
 # These parameters dictate: range(START, END, SWEEP)
 # if you only want to run 1 run, set START and END to same value and SWEEP as 1 
 
 # incorrect penalty
-λ_START = .99998
-λ_END = .99998
+λ_START = .99
+λ_END = .99
 λ_SWEEP = 1
 # declare abiotic penalty
 τ_START = 0.05
@@ -88,7 +88,7 @@ include("../src/policies/conops.jl") # TODO: EDIT Doesn't work
 include("../src/policies/greedy.jl") # TODO: EDIT Doesn't work
 
 if WANDB
-	include("../src/common/plotting_Wandb.jl")
+	include("../src/common/plotting_wandb.jl")
 end
 
 ##################### Start of the experiment sweeps #####################
@@ -161,6 +161,7 @@ for lambda in range(λ_START, λ_END, λ_SWEEP)
 					Wandb.wandb.save("policy.out")
 					sleep(1)
 					plot_alpha_dots(policy)
+					plot_alpha_heatmap(policy)
 					Wandb.wandb.save("figures/plot_alpha_dots.png")
 
 					close(run)

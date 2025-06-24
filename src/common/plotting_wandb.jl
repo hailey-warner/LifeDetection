@@ -1,11 +1,70 @@
 using Plots
 using Graphs
-# using GraphPlot
-# using Compose
-# using Cairo
-# using Fontconfig
-# using TikzGraphs
-# using TikzPictures
+
+function plot_alpha_action_heatmap(policy)
+	num_vectors = size(policy.alphas, 1)
+	num_samples = 101
+	belief_range = 1000
+	b_vals = range(0, 1, length=belief_range)
+
+	# Each row: sample volume, each column: belief in life
+	dominating = zeros(Int, num_samples, belief_range)
+
+	for (i, b) in enumerate(b_vals)
+		for (j, s) in enumerate(1:num_samples)
+			best_score = -Inf
+			best_alpha = 0
+			for k in 1:num_vectors
+				α = policy.alphas[k]
+				idx1 = (s - 1) * 3 + 1  # life = 1
+				idx2 = (s - 1) * 3 + 2  # life = 2
+				v = α[idx1]*(1-b) + α[idx2]*b
+				if v > best_score
+					best_score = v
+					best_alpha = policy.action_map[k]
+				end
+			end
+			dominating[j, i] = best_alpha
+		end
+	end
+
+	# Define a discrete colormap with 9 colors
+	# discrete_colors = cgrad(:Paired_12, 9, categorical=true)
+	discrete_colors = cgrad([
+		# 1–6: Paired_12 mostly, with 2 = teal and 6 = warm orange
+		"#a6cee3",  # 1: light blue
+		"#1ca3a3",  # 2: teal
+		"#b2df8a",  # 3: light green
+		"#33a02c",  # 4: mid green
+		"#fb9a99",  # 5: light red-pink
+		"#fdae61",  # 6: warm orange (changed from strong red)
+
+		# 7: neutral-ish (slate)
+		"#999999",  # 7: slate gray
+
+		# 8 & 9: bold opposing red and blue
+		"#d73027",  # 8: strong red
+		"#4575b4",   # 9: strong blue
+	], categorical=true)
+	p = heatmap(
+		1:num_samples, b_vals,dominating',
+		xlabel="Sample Volume",
+		ylabel="Belief in Life (P(life=1))",
+		# title="Belief in Life (P(life=1))",
+		colorbar_title="Action",
+		color = discrete_colors,
+		clims = (1, 9),  # Important: avoids color blending
+	)
+	if !isdir("./figures")
+		mkpath("./figures")
+	end
+	savefig(p, "./figures/plot_alpha_action_heatmap.png")
+	display(p)
+	return p
+end
+
+
+
 
 
 # TODO: Need to fix alpha plots, and Decision tree plots
@@ -40,15 +99,8 @@ function dominating_alphas(policy::AlphaVectorPolicy)
 
 	return dom_idx_per_sample
 end
-
 function plot_alpha_dots(policy)
 	dominating = dominating_alphas(policy)
-
-	# Plots.plot(1:101, dominating,
-	#     xlabel="Sample Volume",
-	#     ylabel="Dominating Alpha Index",
-	#     title="Dominating Alpha Vector per Sample Volume",
-	#     legend=false)
 
 
 	alpha_actions = [α for α in policy.action_map]  # or however actions are stored
@@ -66,18 +118,6 @@ function plot_alpha_dots(policy)
 		legend=:topright,
 		markersize=4)
 
-	# yticks = unique(dominating)
-	# ytick_labels = ["a=$(policy.action_map[i])" for i in yticks]
-
-	# Plots.plot(1:101, dominating,
-	#     xlabel="Sample Volume",
-	#     ylabel="Dominating Alpha Index",
-	#     title="Dominating Alpha Vector per Sample Volume",
-	#     yticks=(yticks, ytick_labels),
-	#     legend=false)
-
-	# changes = findall(diff(dominating) .!= 0)
-	# vline!(changes, line=:dash, color=:gray)
 
 	if !isdir("./figures")
 		mkpath("./figures")
@@ -104,18 +144,6 @@ function plot_decision_tree(tree_data::Tuple{Vector{String}, Dict{Tuple{Int64, I
 	return t
 end
 
-# TODO: need to fix this
-function plot_bayes_net(bn::DiscreteBayesNet)
-	node_labels = [string(v.name) for v in bn.vars]
-	t = TikzGraphs.plot(bn.graph, TikzGraphs.Layouts.Spring(), node_labels,
-		node_style="draw", graph_options="nodes={draw,circle}")
-	# NOTE: delete line '\setmainfont{Latin Modern Math}' to compile           
-	TikzPictures.save(TikzPictures.TEX("./figures/bayes_net.tex"), t)
-	return t
-end
-
-function plot_pareto_frontier()
-end
 
 
 function plot_belief_over_time(b_hist, a_hist; pomdp=nothing)
@@ -140,10 +168,6 @@ function plot_belief_over_time(b_hist, a_hist; pomdp=nothing)
 	display(p)
 	return p
 end
-
-
-
-
 
 function make_decision_tree(pomdp, policy; max_depth=3)
 	node_labels = String[]
