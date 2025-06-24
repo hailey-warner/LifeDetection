@@ -1,0 +1,8 @@
+method: grid
+parameters:
+  λ:
+    values: [0, 1, 2]
+  τ:
+    values: [0, 1]
+  γ:
+    values: [0.9, 0.95]

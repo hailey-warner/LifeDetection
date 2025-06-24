@@ -1,5 +1,5 @@
 # simulation flags
-WANDB = false
+WANDB = true
 POLICY = "SARSOP" # "CONOPS" "GREEDY" "SARSOP
 VERBOSE = true
 POLICYLOAD = true
