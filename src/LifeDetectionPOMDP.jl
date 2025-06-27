@@ -54,7 +54,8 @@ POMDPs.obsindex(pomdp::LifeDetectionPOMDP, o::Int)    = o+1
 
 # TODO: do we want to start with different states? With different accumulations? (YES)
 # state_to_stateindex(0, 1) # TODO: change in future, so it starts at any state
-POMDPs.initialstate(pomdp::LifeDetectionPOMDP) = initialstateSample(pomdp, 0) # 50% chance of being alive or dead with no starting sample    
+POMDPs.initialstate(pomdp::LifeDetectionPOMDP) = initialstateSample(pomdp, rand(0:100)) 
+# POMDPs.initialstate(pomdp::LifeDetectionPOMDP) = initialstateSample(pomdp, 0) # 50% chance of being alive or dead with no starting sample    
 
 function initialstateSample(pomdp::LifeDetectionPOMDP, sample_volume::Int)
 	# Sample the life state from BN prior

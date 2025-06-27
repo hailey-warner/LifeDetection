@@ -3,14 +3,14 @@ WANDB = true
 POLICY = "SARSOP" # "CONOPS" "GREEDY" "SARSOP
 VERBOSE = true
 POLICYLOAD = true
-EPISODES = 10
-
+EPISODES = 5
+proj_name = "test"
 # These parameters dictate: range(START, END, SWEEP)
 # if you only want to run 1 run, set START and END to same value and SWEEP as 1 
 
 # incorrect penalty
 λ_START = 0.99
-λ_END = .99
+λ_END = 0.99
 λ_SWEEP = 1
 # declare abiotic penalty
 τ_START = 0.05
@@ -113,7 +113,7 @@ for lambda in range(λ_START, λ_END, λ_SWEEP)
 				sample_use=[HRMS, SMS, μCE_LIF, ESA, microscope, nanopore, none],
 				discount=gamma)
 
-			project_name = "test_Sweep_lambda_$(pomdp.λ)_tau_$(pomdp.τ)_gamma_$(pomdp.discount)_sample_$(pomdp.sample_volume)"
+			project_name = "$(proj_name)_lambda_$(pomdp.λ)_tau_$(pomdp.τ)_gamma_$(pomdp.discount)_sample_$(pomdp.sample_volume)"
 
 			if WANDB
 				# using PyCall

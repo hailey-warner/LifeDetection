@@ -38,8 +38,8 @@ function simulate_policyVLD(pomdp, policy, type="SARSOP", n_episodes=1, verbose=
 		end
 
 		updater = DiscreteUpdater(pomdp)
-		b = initialize_belief(updater, initialstate(pomdp))
-		s = rand(initialstate(pomdp))
+		b = initialize_belief(updater, initialstateSample(pomdp, 0))
+		s = initialstateSample(pomdp, 0)
 
 		if verbose
 			println("\nPolicy Simulation: Episode ", episode)
@@ -182,7 +182,10 @@ function simulate_policyVLD(pomdp, policy, type="SARSOP", n_episodes=1, verbose=
 		accuracy[episode] = acc
 
 		if wandb
-			Wandb.wandb.summary["tt_ff_rate"] = correct
+			Wandb.wandb.summary["tt"] = correct["tt"]
+			Wandb.wandb.summary["ft"] = correct["ft"]
+			Wandb.wandb.summary["tf"] = correct["tf"]
+			Wandb.wandb.summary["ff"] = correct["ff"]
 			Wandb.wandb.summary["total_reward_final"] = total_reward
 			# Wandb.wandb.summary["action_final"] = a
 			# Wandb.wandb.summary["action_final_name"] = action_name

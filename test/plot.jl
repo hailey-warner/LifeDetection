@@ -1,21 +1,117 @@
 # Tikz Plots:
-PLOT_CPDS     = true
-PLOT_BN       = true
-DECISION_TREE = true
+PLOT_CPDS     = false #true
+PLOT_BN       = false #true
+DECISION_TREE = false #true
 
 # WANDB Plots:
-ALPHA_VECTORS   = true
+ALPHA_VECTORS_HEATMAP   = false #true # TODO: need to download pomdpx file to do this
 PARETO_FRONTIER = true
+projname = "par_"
 
 using Pkg
 if PLOT_BN || PLOT_CPDS || DECISION_TREE
 	Pkg.activate("LifeDetectionPkg")
 	Pkg.instantiate()
+	include("../src/common/plotting_tikz.jl")
+	include("../src/bayes_net.jl")
+elseif PARETO_FRONTIER
+	Pkg.activate("wandbPkg")
+	Pkg.instantiate()
+	include("../src/common/plotting_wandb.jl")
 end
 
-include("../src/bayes_net.jl")
-include("../src/common/plotting_tiks.jl")
-include("../src/common/plotting_wandb.jl")
+
+
+
+if PARETO_FRONTIER
+
+	using Wandb
+	api = Wandb.wandb.Api()
+
+	# Replace with your actual entity (user or team name)
+	entity = "sherpa-rpa"
+
+	# Get all projects under the entity
+	projects = api.projects(entity=entity)
+
+	project_counts = collect(projects)
+	# Count the number of projects that start with "pareto_"
+	pareto_count = count(project_count -> startswith(string(project_count.name), projname), project_counts)
+
+	average_tt = zeros(Float64,pareto_count)
+	average_ft = zeros(Float64,pareto_count)
+	average_tf = zeros(Float64,pareto_count)
+	average_ff = zeros(Float64,pareto_count)
+
+
+	for (proj_idx, project) in enumerate(projects)
+		if startswith(string(project.name), projname)
+			# Combine the entity and project name into a single string
+			project_path = string(entity, "/", project.name)
+			runs_pareto = api.runs(project_path)
+
+			count = 0
+			temp_tt = 0.0
+			temp_tf = 0.0
+			temp_ft = 0.0
+			temp_ff = 0.0
+			for idx in range(1,length(runs_pareto)-1)
+				if string(runs_pareto[idx].state) == "finished"
+					print(idx)
+					# try
+					tt = parse(Int, string(runs_pareto[idx].summary["tt"]))
+					tf = parse(Int, string(runs_pareto[idx].summary["tf"]))
+					ft = parse(Int, string(runs_pareto[idx].summary["ft"]))
+					ff = parse(Int, string(runs_pareto[idx].summary["ff"]))
+					total_t = tt + tf
+					temp_tt = tt / total_t
+					temp_tf = tf / total_t
+
+					total_f = ft + ff
+					temp_ft = ft / total_f
+					temp_ff = ff / total_f
+
+					count += 1
+					# catch
+					# 	println("Run doesn't have the correct metrics / data")
+					# end
+				end
+			end 
+
+
+			average_tt[proj_idx] = temp_tt / count
+			average_tf[proj_idx] = temp_tf / count
+			average_ft[proj_idx] = temp_ft / count
+			average_ff[proj_idx] = temp_ff / count
+
+
+		end
+	end
+
+	# Scatter plot 1: average_tt vs average_tf
+	p1 = scatter(
+		average_ft, average_tf,
+		xlabel = "false negative: declared dead when life is true",
+		ylabel = "false positive: declared life when life is false",
+		# title = "Average TT vs Average TF",
+		label = "Projects"
+	)
+
+	# # Scatter plot 2: average_ft vs average_ff
+	# p2 = scatter(
+	# 	average_ft, average_ff,
+	# 	xlabel = "Average FT",
+	# 	ylabel = "Average FF",
+	# 	title = "Average FT vs Average FF",
+	# 	label = "Projects"
+	# )
+
+	# Combine plots side by side
+	# plot_combined = plot(p1, p2, layout = (1, 2), size = (900, 400))
+	savefig(p1, "./figures/pareto_scatter.png")
+	display(p1)
+
+end
 
 if PLOT_BN == true
 	plot = BayesNets.plot(bn)
@@ -26,51 +122,52 @@ if PLOT_BN == true
 end
 
 if PLOT_CPDS == true
-	p = @pgf GroupPlot({
-		group_style = {group_size = "6 by 4", horizontal_sep = "2.5cm", vertical_sep = "2.5cm"},
-		width = "4cm",
-		height = "3cm",
-	})
+    @eval begin
+		p = @pgf GroupPlot({
+			group_style = {group_size = "6 by 4", horizontal_sep = "2.5cm", vertical_sep = "2.5cm"},
+			width = "4cm",
+			height = "3cm",
+		})
 
-	# 1: P(life) prior figure
-	prior_plot = make_pgfplot(bn.cpds[bn.name_to_index[:C0]].distributions[1], raw"P($C_0$)")
-	PGFPlotsX.pgfsave("figures/prior.png", prior_plot)
+		# 1: P(life) prior figure
+		prior_plot = make_pgfplot(bn.cpds[bn.name_to_index[:C0]].distributions[1], raw"P($C_0$)")
+		PGFPlotsX.pgfsave("figures/prior.png", prior_plot)
 
-	# 2: CPD figure
-	push!(p, make_pgfplot(bn.cpds[bn.name_to_index[:C1]].distributions[1], raw"P($C_1$ | $C_0$=false)"))
-	push!(p, make_pgfplot(bn.cpds[bn.name_to_index[:C1]].distributions[2], raw"P($C_1$ | $C_0$=true)"))
-	push!(p, make_pgfplot(bn.cpds[bn.name_to_index[:C2]].distributions[1], raw"P($C_2$ | $C_0$=false)"))
-	push!(p, make_pgfplot(bn.cpds[bn.name_to_index[:C2]].distributions[2], raw"P($C_2$ | $C_0$=true)"))
-	push!(p, make_pgfplot(bn.cpds[bn.name_to_index[:C3]].distributions[1], raw"P($C_3$ | $C_0$=false)"))
-	push!(p, make_pgfplot(bn.cpds[bn.name_to_index[:C3]].distributions[2], raw"P($C_3$ | $C_0$=true)"))
+		# 2: CPD figure
+		push!(p, make_pgfplot(bn.cpds[bn.name_to_index[:C1]].distributions[1], raw"P($C_1$ | $C_0$=false)"))
+		push!(p, make_pgfplot(bn.cpds[bn.name_to_index[:C1]].distributions[2], raw"P($C_1$ | $C_0$=true)"))
+		push!(p, make_pgfplot(bn.cpds[bn.name_to_index[:C2]].distributions[1], raw"P($C_2$ | $C_0$=false)"))
+		push!(p, make_pgfplot(bn.cpds[bn.name_to_index[:C2]].distributions[2], raw"P($C_2$ | $C_0$=true)"))
+		push!(p, make_pgfplot(bn.cpds[bn.name_to_index[:C3]].distributions[1], raw"P($C_3$ | $C_0$=false)"))
+		push!(p, make_pgfplot(bn.cpds[bn.name_to_index[:C3]].distributions[2], raw"P($C_3$ | $C_0$=true)"))
 
-	push!(p, make_pgfplot(bn.cpds[bn.name_to_index[:C4]].distributions[1], raw"P($C_4$ | $C_0$=false)"))
-	push!(p, make_pgfplot(bn.cpds[bn.name_to_index[:C4]].distributions[2], raw"P($C_4$ | $C_0$=true)"))
-	push!(p, make_pgfplot(bn.cpds[bn.name_to_index[:C5]].distributions[1], raw"P($C_5$ | $C_0$=false)"))
-	push!(p, make_pgfplot(bn.cpds[bn.name_to_index[:C5]].distributions[2], raw"P($C_5$ | $C_0$=true)"))
-	push!(p, make_pgfplot(bn.cpds[bn.name_to_index[:C6]].distributions[1], raw"P($C_6$ | $C_0$=false)"))
-	push!(p, make_pgfplot(bn.cpds[bn.name_to_index[:C6]].distributions[2], raw"P($C_6$ | $C_0$=true)"))
+		push!(p, make_pgfplot(bn.cpds[bn.name_to_index[:C4]].distributions[1], raw"P($C_4$ | $C_0$=false)"))
+		push!(p, make_pgfplot(bn.cpds[bn.name_to_index[:C4]].distributions[2], raw"P($C_4$ | $C_0$=true)"))
+		push!(p, make_pgfplot(bn.cpds[bn.name_to_index[:C5]].distributions[1], raw"P($C_5$ | $C_0$=false)"))
+		push!(p, make_pgfplot(bn.cpds[bn.name_to_index[:C5]].distributions[2], raw"P($C_5$ | $C_0$=true)"))
+		push!(p, make_pgfplot(bn.cpds[bn.name_to_index[:C6]].distributions[1], raw"P($C_6$ | $C_0$=false)"))
+		push!(p, make_pgfplot(bn.cpds[bn.name_to_index[:C6]].distributions[2], raw"P($C_6$ | $C_0$=true)"))
 
-	push!(p, make_pgfplot(bn.cpds[bn.name_to_index[:C7]].distributions[1], raw"P($C_7$ | $C_2$=false)"))
-	push!(p, make_pgfplot(bn.cpds[bn.name_to_index[:C7]].distributions[2], raw"P($C_7$ | $C_2$=true)"))
-	push!(p, make_pgfplot(bn.cpds[bn.name_to_index[:C8]].distributions[1], raw"P($C_8$ | $C_4$=false, $C_5$=0)"))
-	push!(p, make_pgfplot(bn.cpds[bn.name_to_index[:C8]].distributions[23], raw"P($C_8$ | $C_4$=false, $C_5$=22)"))
-	push!(p, make_pgfplot(bn.cpds[bn.name_to_index[:C8]].distributions[24], raw"P($C_8$ | $C_4$=true, $C_5$=0)"))
-	push!(p, make_pgfplot(bn.cpds[bn.name_to_index[:C8]].distributions[46], raw"P($C_8$ | $C_4$=true, $C_5$=22)"))
+		push!(p, make_pgfplot(bn.cpds[bn.name_to_index[:C7]].distributions[1], raw"P($C_7$ | $C_2$=false)"))
+		push!(p, make_pgfplot(bn.cpds[bn.name_to_index[:C7]].distributions[2], raw"P($C_7$ | $C_2$=true)"))
+		push!(p, make_pgfplot(bn.cpds[bn.name_to_index[:C8]].distributions[1], raw"P($C_8$ | $C_4$=false, $C_5$=0)"))
+		push!(p, make_pgfplot(bn.cpds[bn.name_to_index[:C8]].distributions[23], raw"P($C_8$ | $C_4$=false, $C_5$=22)"))
+		push!(p, make_pgfplot(bn.cpds[bn.name_to_index[:C8]].distributions[24], raw"P($C_8$ | $C_4$=true, $C_5$=0)"))
+		push!(p, make_pgfplot(bn.cpds[bn.name_to_index[:C8]].distributions[46], raw"P($C_8$ | $C_4$=true, $C_5$=22)"))
 
-	push!(p, make_pgfplot(bn.cpds[bn.name_to_index[:C9]].distributions[1], raw"P($C_9$ | $C_1$=false, $C_5$=0)"))
-	push!(p, make_pgfplot(bn.cpds[bn.name_to_index[:C9]].distributions[23], raw"P($C_9$ | $C_1$=false, $C_5$=22)"))
-	push!(p, make_pgfplot(bn.cpds[bn.name_to_index[:C9]].distributions[24], raw"P($C_9$ | $C_1$=true, $C_5$=0)"))
-	push!(p, make_pgfplot(bn.cpds[bn.name_to_index[:C9]].distributions[46], raw"P($C_9$ | $C_1$=true, $C_5$=22)"))
-	push!(p, make_pgfplot(bn.cpds[bn.name_to_index[:C10]].distributions[1], raw"P($C_{10}$ | $C_5$=0)"))
-	push!(p, make_pgfplot(bn.cpds[bn.name_to_index[:C10]].distributions[23], raw"P($C_{10}$ | $C_5$=22)"))
+		push!(p, make_pgfplot(bn.cpds[bn.name_to_index[:C9]].distributions[1], raw"P($C_9$ | $C_1$=false, $C_5$=0)"))
+		push!(p, make_pgfplot(bn.cpds[bn.name_to_index[:C9]].distributions[23], raw"P($C_9$ | $C_1$=false, $C_5$=22)"))
+		push!(p, make_pgfplot(bn.cpds[bn.name_to_index[:C9]].distributions[24], raw"P($C_9$ | $C_1$=true, $C_5$=0)"))
+		push!(p, make_pgfplot(bn.cpds[bn.name_to_index[:C9]].distributions[46], raw"P($C_9$ | $C_1$=true, $C_5$=22)"))
+		push!(p, make_pgfplot(bn.cpds[bn.name_to_index[:C10]].distributions[1], raw"P($C_{10}$ | $C_5$=0)"))
+		push!(p, make_pgfplot(bn.cpds[bn.name_to_index[:C10]].distributions[23], raw"P($C_{10}$ | $C_5$=22)"))
 
-	PGFPlotsX.pgfsave("figures/cpds.png", p)
+		PGFPlotsX.pgfsave("figures/cpds.png", p)
+	end
 end
 
-# if BAYES_NET == true
-#     plot_bayes_net(bn)
-# end
+
+
 
 # if DECISION_TREE == true
 #     tree_data = make_decision_tree(pomdp, policy)

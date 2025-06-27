@@ -79,7 +79,7 @@ end
 
 
 # TODO: Need to fix alpha plots, and Decision tree plots
-function dominating_alphas(policy::AlphaVectorPolicy)
+function dominating_alphas(policy)#::AlphaVectorPolicy)
 	num_vectors = size(policy.alphas, 1)
 	num_samples = 101  # or infer from alpha size
 	b_vals = range(0, 1, length=100)
