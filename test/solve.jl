@@ -3,13 +3,13 @@ WANDB = true
 POLICY = "SARSOP" # "CONOPS" "GREEDY" "SARSOP
 VERBOSE = true
 POLICYLOAD = true
-EPISODES = 1
+EPISODES = 10
 
 # These parameters dictate: range(START, END, SWEEP)
 # if you only want to run 1 run, set START and END to same value and SWEEP as 1 
 
 # incorrect penalty
-λ_START = .99
+λ_START = 0.99
 λ_END = .99
 λ_SWEEP = 1
 # declare abiotic penalty
@@ -113,7 +113,7 @@ for lambda in range(λ_START, λ_END, λ_SWEEP)
 				sample_use=[HRMS, SMS, μCE_LIF, ESA, microscope, nanopore, none],
 				discount=gamma)
 
-			project_name = "Sweep_lambda_$(pomdp.λ)_tau_$(pomdp.τ)_gamma_$(pomdp.discount)_sample_$(pomdp.sample_volume)"
+			project_name = "test_Sweep_lambda_$(pomdp.λ)_tau_$(pomdp.τ)_gamma_$(pomdp.discount)_sample_$(pomdp.sample_volume)"
 
 			if WANDB
 				# using PyCall
@@ -161,13 +161,14 @@ for lambda in range(λ_START, λ_END, λ_SWEEP)
 					Wandb.wandb.save("policy.out")
 					sleep(1)
 					plot_alpha_dots(policy)
-					plot_alpha_heatmap(policy)
+					plot_alpha_action_heatmap(policy)
 					Wandb.wandb.save("figures/plot_alpha_dots.png")
 					Wandb.wandb.save("figures/plot_alpha_action_heatmap.png")
 
 					close(run)
 				end
 				rewards, accuracy = simulate_policyVLD(pomdp, policy, "SARSOP", EPISODES, VERBOSE, WANDB, project_name) # SARSOP or conops or greedy
+	
 
 			elseif POLICY == "GREEDY"
 				rewards, accuracy = simulate_policyVLD(pomdp, "policy", "GREEDY", EPISODES, VERBOSE, WANDB, project_name) # SARSOP or conops or greedy

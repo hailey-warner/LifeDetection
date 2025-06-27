@@ -2,7 +2,7 @@
 
 julia_version = "1.11.5"
 manifest_format = "2.0"
-project_hash = "9c098f994f444a8e347e2aad4ec8de02ed26b80b"
+project_hash = "1993f81d67ae64d974e89c4a1643fadfedb059f6"
 
 [[deps.AbstractTrees]]
 git-tree-sha1 = "2d9c9a55f9c93e8887ad391fbae72f8ef55e1177"
@@ -623,6 +623,12 @@ git-tree-sha1 = "f02b56007b064fbfddb4c9cd60161b6dd0f40df3"
 uuid = "e6f89c97-d47a-5376-807f-9c37f3926c36"
 version = "1.1.0"
 
+[[deps.MOMDPs]]
+deps = ["LinearAlgebra", "POMDPLinter", "POMDPTools", "POMDPs"]
+git-tree-sha1 = "258f43dc1d7e45a6f13d1791202bd086fd389bc1"
+uuid = "77fc6e33-3f81-4304-8123-5a68e6b3eeb4"
+version = "0.1.1"
+
 [[deps.MacroTools]]
 git-tree-sha1 = "1e0228a030642014fe5cfe68c2c0a818f9e3f522"
 uuid = "1914dd2f-81c6-5fcd-8719-6d5c9610ff09"
@@ -775,6 +781,12 @@ deps = ["CommonRLInterface", "DataFrames", "Distributed", "Distributions", "Line
 git-tree-sha1 = "723a9378f08879c019220dc125afd6043799d7d4"
 uuid = "7588e00f-9cae-40de-98dc-e0c70c48cdd7"
 version = "1.1.0"
+
+[[deps.POMDPXFiles]]
+deps = ["LightXML", "MOMDPs", "POMDPTools", "POMDPs", "ProgressMeter"]
+git-tree-sha1 = "6048ddc096c7e20621feb97423b7e28a58e3b365"
+uuid = "c6f6ee83-58c6-5336-a19f-2c76817e1af6"
+version = "0.3.1"
 
 [[deps.POMDPs]]
 deps = ["Distributions", "Graphs", "NamedTupleTools", "POMDPLinter", "Pkg", "Random", "Statistics"]
@@ -961,6 +973,18 @@ deps = ["Artifacts", "JLLWrappers", "Libdl"]
 git-tree-sha1 = "58cdd8fb2201a6267e1db87ff148dd6c1dbd8ad8"
 uuid = "f50d1b31-88e8-58de-be2c-1cc44531875f"
 version = "0.5.1+0"
+
+[[deps.SARSOP]]
+deps = ["MOMDPs", "POMDPLinter", "POMDPTools", "POMDPXFiles", "POMDPs", "Parameters", "SARSOP_jll"]
+git-tree-sha1 = "2bf340f35a20ee3a50ffb8e7b8d33ab0c274c5f4"
+uuid = "cef570c6-3a94-5604-96b7-1a5e143043f2"
+version = "0.6.0"
+
+[[deps.SARSOP_jll]]
+deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
+git-tree-sha1 = "8b3b6abc098d2feb206e5c2fc59fd88b890acc4a"
+uuid = "e478675d-f996-546e-baa1-da59d9de2062"
+version = "0.96.1+0"
 
 [[deps.SHA]]
 uuid = "ea8e919c-243c-51af-8825-aaa63cd721ce"
