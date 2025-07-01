@@ -6,7 +6,7 @@ DECISION_TREE = false #true
 # WANDB Plots:
 ALPHA_VECTORS_HEATMAP   = false #true # TODO: need to download pomdpx file to do this
 PARETO_FRONTIER = true
-projname = "par_"
+projname = "hailey"
 
 using Pkg
 if PLOT_BN || PLOT_CPDS || DECISION_TREE
@@ -33,19 +33,27 @@ if PARETO_FRONTIER
 
 	# Get all projects under the entity
 	projects = api.projects(entity=entity)
+	# Filter projects whose names start with projname
+	filtered_projects = [project for project in projects if startswith(string(project.name), projname)]
+	println("Filtered projects: ", [string(project.name) for project in filtered_projects])
 
-	project_counts = collect(projects)
-	# Count the number of projects that start with "pareto_"
-	pareto_count = count(project_count -> startswith(string(project_count.name), projname), project_counts)
+
+	ignore = ["hailey_lambda_0.99_tau_0.05_gamma_0.9_sample_100",
+			  "hailey_lambda_0.925_tau_0.5_gamma_0.9_sample_100"]
+	filtered_projects = [project for project in filtered_projects if !(string(project.name) in ignore)]
+	pareto_count = length(filtered_projects)
+	# project_counts = collect(projects)
+
+	# # Count the number of projects that start with "pareto_"
+	# pareto_count = count(project_count -> startswith(string(project_count.name), projname), project_counts)
 
 	average_tt = zeros(Float64,pareto_count)
 	average_ft = zeros(Float64,pareto_count)
 	average_tf = zeros(Float64,pareto_count)
 	average_ff = zeros(Float64,pareto_count)
 
-
-	for (proj_idx, project) in enumerate(projects)
-		if startswith(string(project.name), projname)
+	for (proj_idx, project) in enumerate(filtered_projects)
+		if startswith(string(project.name), projname) && !(string(project.name) in ignore)
 			# Combine the entity and project name into a single string
 			project_path = string(entity, "/", project.name)
 			runs_pareto = api.runs(project_path)
@@ -55,61 +63,58 @@ if PARETO_FRONTIER
 			temp_tf = 0.0
 			temp_ft = 0.0
 			temp_ff = 0.0
-			for idx in range(1,length(runs_pareto)-1)
-				if string(runs_pareto[idx].state) == "finished"
-					print(idx)
-					# try
-					tt = parse(Int, string(runs_pareto[idx].summary["tt"]))
-					tf = parse(Int, string(runs_pareto[idx].summary["tf"]))
-					ft = parse(Int, string(runs_pareto[idx].summary["ft"]))
-					ff = parse(Int, string(runs_pareto[idx].summary["ff"]))
-					total_t = tt + tf
-					temp_tt = tt / total_t
-					temp_tf = tf / total_t
+			for idx in 1:length(runs_pareto)-1
+				if string(runs_pareto[idx].state) == "finished" 
+					# print(idx)
+					try
+						tt = parse(Int, string(runs_pareto[idx].summary["tt"]))
+						tf = parse(Int, string(runs_pareto[idx].summary["tf"]))
+						ft = parse(Int, string(runs_pareto[idx].summary["ft"]))
+						ff = parse(Int, string(runs_pareto[idx].summary["ff"]))
 
-					total_f = ft + ff
-					temp_ft = ft / total_f
-					temp_ff = ff / total_f
+						total_t = tt + tf
+						temp_tt += tt / total_t
+						temp_tf += tf / total_t
 
-					count += 1
-					# catch
-					# 	println("Run doesn't have the correct metrics / data")
-					# end
+						total_f = ft + ff
+						temp_ft += ft / total_f
+						temp_ff += ff / total_f
+
+						count += 1
+					catch
+						println("Run doesn't have the correct metrics / data")
+					end
 				end
 			end 
 
-
-			average_tt[proj_idx] = temp_tt / count
-			average_tf[proj_idx] = temp_tf / count
-			average_ft[proj_idx] = temp_ft / count
-			average_ff[proj_idx] = temp_ff / count
-
+			if count > 0
+				average_tt[proj_idx] = temp_tt / count
+				average_tf[proj_idx] = temp_tf / count
+				average_ft[proj_idx] = temp_ft / count
+				average_ff[proj_idx] = temp_ff / count
+			else
+				println("Count = 0")
+			end
 
 		end
 	end
 
 	# Scatter plot 1: average_tt vs average_tf
 	p1 = scatter(
-		average_ft, average_tf,
+		average_tf, average_ft,
 		xlabel = "false negative: declared dead when life is true",
 		ylabel = "false positive: declared life when life is false",
 		# title = "Average TT vs Average TF",
-		label = "Projects"
+		label = "Projects",
+		ylimits=(-0.1,0.1),
+		xlimits=(0.5,0.7)
+
 	)
 
-	# # Scatter plot 2: average_ft vs average_ff
-	# p2 = scatter(
-	# 	average_ft, average_ff,
-	# 	xlabel = "Average FT",
-	# 	ylabel = "Average FF",
-	# 	title = "Average FT vs Average FF",
-	# 	label = "Projects"
-	# )
-
-	# Combine plots side by side
-	# plot_combined = plot(p1, p2, layout = (1, 2), size = (900, 400))
 	savefig(p1, "./figures/pareto_scatter.png")
 	display(p1)
+	println(average_tf)
+	println(average_ft)
 
 end
 

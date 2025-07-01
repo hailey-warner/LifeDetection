@@ -1,6 +1,6 @@
 using ProgressMeter
 
-function simulate_policyVLD(pomdp, policy, type="SARSOP", n_episodes=1, verbose=true, wandb=false, wandb_Name="")
+function simulate_policyVLD(pomdp, policy, type="SARSOP", n_episodes=1, verbose=true, wandb=false, wandb_Name="", threshold_high= 0.999, threshold_low=0.001)
 
 	if verbose
 		println("--------------------------------START EPISODES---------------------------------")
@@ -55,7 +55,7 @@ function simulate_policyVLD(pomdp, policy, type="SARSOP", n_episodes=1, verbose=
 		a = 0
 		s = 1
 		sp = 1
-		belief_life = 0.0
+		belief_life = pdf(b, 2)
 		action_name = ""
 		action_final = 0
 		# belief_life = pdf(b, 2) # setting belief for life with no sample volume at first
@@ -96,7 +96,7 @@ function simulate_policyVLD(pomdp, policy, type="SARSOP", n_episodes=1, verbose=
 
 				# Reinitialize belief for same sample_volume
 				b = initialize_belief(updater, initialstateSample(pomdp, sample_volume))
-
+				belief_life = pdf(b, state_to_stateindex(sample_volume, 2))
                 if verbose
                     println("[Resetting] Reached terminal state. Sampling new initial state.")
                 end
@@ -107,8 +107,8 @@ function simulate_policyVLD(pomdp, policy, type="SARSOP", n_episodes=1, verbose=
 				a = action(policy, b)
 			elseif type == "greedy"
 				a = action_greedy_policy(policy, b, step)
-			elseif type == "conops"
-				a, modeAcc, prevAction = conops_orbiter(pomdp, s, modeAcc, prevAction)
+			elseif type == "CONOPS"
+				a, modeAcc, prevAction = conops_orbiter(pomdp, s, modeAcc, prevAction, belief_life, threshold_high, threshold_low)
 			end
 
 			sp = rand(transition(pomdp, s, a))
@@ -163,7 +163,7 @@ function simulate_policyVLD(pomdp, policy, type="SARSOP", n_episodes=1, verbose=
 			step += 1
 			action_final = a-pomdp.inst
 
-			if true_state == 2 && a <=7
+			if true_state == 2 && a ==7
 				correct["tf"] += 1  # false positive
 			end
 		end

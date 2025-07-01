@@ -1,10 +1,14 @@
 # simulation flags
-WANDB = true
-POLICY = "SARSOP" # "CONOPS" "GREEDY" "SARSOP
+WANDB = false
+POLICY = "CONOPS" # "CONOPS" "GREEDY" "SARSOP
+# Thresholds for decision
+threshold_high = 0.15#0.99999
+threshold_low = 0.01#0.00001
 VERBOSE = true
 POLICYLOAD = true
-EPISODES = 5
+EPISODES = 3
 proj_name = "test"
+# proj_name = "CONOPS_test-H_$(threshold_high)-L_$(threshold_low)"
 # These parameters dictate: range(START, END, SWEEP)
 # if you only want to run 1 run, set START and END to same value and SWEEP as 1 
 
@@ -57,7 +61,7 @@ ACTION_CPDS = Dict(
 ##################### Libraries #####################
 
 using Pkg
-if WANDB
+if true#WANDB
 	Pkg.activate("wandbPkg")
 	Pkg.instantiate()
 	using Wandb
@@ -142,8 +146,11 @@ for lambda in range(λ_START, λ_END, λ_SWEEP)
 
 			if POLICY == "CONOPS"
 				# Running CONOPS:
-				rewards, accuracy = simulate_policyVLD(pomdp, "policy", "CONOPS", EPISODES, VERBOSE, WANDB, project_name) # SARSOP or conops or greedy
-
+				rewards, accuracy = simulate_policyVLD(pomdp, "policy", "CONOPS", EPISODES, VERBOSE, WANDB, project_name, threshold_high, threshold_low) # SARSOP or conops or greedy
+				if WANDB
+					sleep(1)
+					close(run)
+				end
 			elseif POLICY == "SARSOP"
 
 				# Running SARSOP
@@ -167,11 +174,11 @@ for lambda in range(λ_START, λ_END, λ_SWEEP)
 
 					close(run)
 				end
-				rewards, accuracy = simulate_policyVLD(pomdp, policy, "SARSOP", EPISODES, VERBOSE, WANDB, project_name) # SARSOP or conops or greedy
+				rewards, accuracy = simulate_policyVLD(pomdp, policy, "SARSOP", EPISODES, VERBOSE, WANDB, project_name, threshold_high, threshold_low) # SARSOP or conops or greedy
 	
 
 			elseif POLICY == "GREEDY"
-				rewards, accuracy = simulate_policyVLD(pomdp, "policy", "GREEDY", EPISODES, VERBOSE, WANDB, project_name) # SARSOP or conops or greedy
+				rewards, accuracy = simulate_policyVLD(pomdp, "policy", "GREEDY", EPISODES, VERBOSE, WANDB, project_name, threshold_high, threshold_low) # SARSOP or conops or greedy
 
 			else
 				println("No Valid Policy Selected")
