@@ -1,13 +1,19 @@
-# Tikz Plots:
-PLOT_CPDS     = false #true
-PLOT_BN       = false #true
-DECISION_TREE = false #true
+#!/usr/bin/env julia
 
-# WANDB Plots:
-ALPHA_VECTORS_HEATMAP   = false #true # TODO: need to download pomdpx file to do this
+# -------------------------------
+# Configuration Flags
+# -------------------------------
+PLOT_CPDS     = false
+PLOT_BN       = false
+DECISION_TREE = false
+
+ALPHA_VECTORS_HEATMAP = false
 PARETO_FRONTIER = true
-projname = "hailey"
+projname = "paretoV3"
 
+# -------------------------------
+# Package Setup
+# -------------------------------
 using Pkg
 if PLOT_BN || PLOT_CPDS || DECISION_TREE
 	Pkg.activate("LifeDetectionPkg")
@@ -18,104 +24,129 @@ elseif PARETO_FRONTIER
 	Pkg.activate("wandbPkg")
 	Pkg.instantiate()
 	include("../src/common/plotting_wandb.jl")
+	using CSV, DataFrames, Plots
+	using Wandb
+	using DelimitedFiles
+	using Statistics
 end
 
 
+# -------------------------------
+# Get PART_ID and NUM_PARTS
+# -------------------------------
+function get_part_info()
+    part_id = try
+        parse(Int, get(ENV, "PART_ID", get(ARGS, 1, "1")))
+    catch
+        error("Invalid PART_ID. Pass via env var or CLI argument 1.")
+    end
+
+    num_parts = try
+        parse(Int, get(ENV, "NUM_PARTS", get(ARGS, 2, "3")))
+    catch
+        error("Invalid NUM_PARTS. Pass via env var or CLI argument 2.")
+    end
+
+    if part_id < 1 || part_id > num_parts
+        error("PART_ID must be between 1 and NUM_PARTS")
+    end
+
+    return part_id, num_parts
+end
 
 
+# -------------------------------
+# PARETO_FRONTIER Collection
+# -------------------------------
 if PARETO_FRONTIER
 
-	using Wandb
-	api = Wandb.wandb.Api()
-
-	# Replace with your actual entity (user or team name)
+	PART_ID, NUM_PARTS = get_part_info()
+		
 	entity = "sherpa-rpa"
+	# ignore = ["hailey_lambda_0.99_tau_0.05_gamma_0.9_sample_100",
+	#           "hailey_lambda_0.925_tau_0.5_gamma_0.9_sample_100"]
 
-	# Get all projects under the entity
+	api = Wandb.wandb.Api()
 	projects = api.projects(entity=entity)
-	# Filter projects whose names start with projname
-	filtered_projects = [project for project in projects if startswith(string(project.name), projname)]
-	println("Filtered projects: ", [string(project.name) for project in filtered_projects])
+	all_filtered_projects = [p for p in projects if startswith(string(p.name), projname)]
+	total = length(all_filtered_projects)
 
+	chunk_size = ceil(Int, total / NUM_PARTS)
+	start_idx = (PART_ID - 1) * chunk_size + 1
+	end_idx = min(PART_ID * chunk_size, total)
+	filtered_projects = all_filtered_projects[start_idx:end_idx]
 
-	ignore = ["hailey_lambda_0.99_tau_0.05_gamma_0.9_sample_100",
-			  "hailey_lambda_0.925_tau_0.5_gamma_0.9_sample_100"]
-	filtered_projects = [project for project in filtered_projects if !(string(project.name) in ignore)]
-	pareto_count = length(filtered_projects)
-	# project_counts = collect(projects)
+	println("PART $PART_ID of $NUM_PARTS handling projects $start_idx to $end_idx")
 
-	# # Count the number of projects that start with "pareto_"
-	# pareto_count = count(project_count -> startswith(string(project_count.name), projname), project_counts)
+	count_local = length(filtered_projects)
+	average_tt = zeros(Float64, count_local)
+	average_ft = zeros(Float64, count_local)
+	average_tf = zeros(Float64, count_local)
+	average_ff = zeros(Float64, count_local)
+	errors = fill("", count_local)
 
-	average_tt = zeros(Float64,pareto_count)
-	average_ft = zeros(Float64,pareto_count)
-	average_tf = zeros(Float64,pareto_count)
-	average_ff = zeros(Float64,pareto_count)
+	for (i, project) in enumerate(filtered_projects)
+		proj_name = string(project.name)
+		try
 
-	for (proj_idx, project) in enumerate(filtered_projects)
-		if startswith(string(project.name), projname) && !(string(project.name) in ignore)
-			# Combine the entity and project name into a single string
-			project_path = string(entity, "/", project.name)
-			runs_pareto = api.runs(project_path)
-
+			runs = api.runs("$entity/$proj_name")
 			count = 0
 			temp_tt = 0.0
 			temp_tf = 0.0
 			temp_ft = 0.0
 			temp_ff = 0.0
-			for idx in 1:length(runs_pareto)-1
-				if string(runs_pareto[idx].state) == "finished" 
-					# print(idx)
+
+			for run in runs
+				if string(run.state) == "finished"
 					try
-						tt = parse(Int, string(runs_pareto[idx].summary["tt"]))
-						tf = parse(Int, string(runs_pareto[idx].summary["tf"]))
-						ft = parse(Int, string(runs_pareto[idx].summary["ft"]))
-						ff = parse(Int, string(runs_pareto[idx].summary["ff"]))
+						tt = parse(Int, string(run.summary["tt"]))
+						tf = parse(Int, string(run.summary["tf"]))
+						ft = parse(Int, string(run.summary["ft"]))
+						ff = parse(Int, string(run.summary["ff"]))
 
 						total_t = tt + tf
+						total_f = ft + ff
+
 						temp_tt += tt / total_t
 						temp_tf += tf / total_t
-
-						total_f = ft + ff
 						temp_ft += ft / total_f
 						temp_ff += ff / total_f
 
 						count += 1
 					catch
-						println("Run doesn't have the correct metrics / data")
+						println("Skipping run with missing metrics in $proj_name")
 					end
 				end
-			end 
-
-			if count > 0
-				average_tt[proj_idx] = temp_tt / count
-				average_tf[proj_idx] = temp_tf / count
-				average_ft[proj_idx] = temp_ft / count
-				average_ff[proj_idx] = temp_ff / count
-			else
-				println("Count = 0")
 			end
 
+			if count > 0
+				average_tt[i] = temp_tt / count
+				average_tf[i] = temp_tf / count
+				average_ft[i] = temp_ft / count
+				average_ff[i] = temp_ff / count
+			else
+				errors[i] = "No valid runs found"
+			end
+		catch e
+			errors[i] = "Error processing $proj_name: $e"
 		end
 	end
 
-	# Scatter plot 1: average_tt vs average_tf
-	p1 = scatter(
-		average_tf, average_ft,
-		xlabel = "false negative: declared dead when life is true",
-		ylabel = "false positive: declared life when life is false",
-		# title = "Average TT vs Average TF",
-		label = "Projects",
-		ylimits=(-0.1,0.1),
-		xlimits=(0.5,0.7)
+	# Save results
+	if !isdir("pareto_csv")
+		mkpath("pareto_csv")
+	end
 
-	)
-
-	savefig(p1, "./figures/pareto_scatter.png")
-	display(p1)
-	println(average_tf)
-	println(average_ft)
-
+	output_file = "pareto_csv/pareto_part_$(PART_ID)_of_$(NUM_PARTS).csv"
+	open(output_file, "w") do io
+		write(io, "project,average_tt,average_tf,average_ft,average_ff,error\n")
+		for i in 1:count_local
+			proj_str = string(filtered_projects[i].name)
+			err = isempty(errors[i]) ? "none" : errors[i]
+			write(io, "$proj_str,$(average_tt[i]),$(average_tf[i]),$(average_ft[i]),$(average_ff[i]),$err\n")
+		end
+	end
+	println("Saved part results to $output_file")
 end
 
 if PLOT_BN == true
@@ -170,35 +201,3 @@ if PLOT_CPDS == true
 		PGFPlotsX.pgfsave("figures/cpds.png", p)
 	end
 end
-
-
-
-
-# if DECISION_TREE == true
-#     tree_data = make_decision_tree(pomdp, policy)
-#     plot_decision_tree(tree_data)
-# end
-# if ALPHA_VECTORS == true
-#     plot_alpha_vectors(policy)
-# end
-
-# if PARETO_FRONTIER == true
-#     end_λ = 20
-#     reward_list = []
-#     acc_list = []
-#     for λ in range(1, end_λ)
-#         pomdp = binaryLifeDetectionPOMDP(inst=NUM_INSTRUMENTS, bn=bn, λ=λ,  k=SENSOR_COST, discount=0.9)
-#         solver = SARSOPSolver(verbose=true, timeout=100)
-#         policy = solve(solver, pomdp)
-#         rewards, accuracy = simulate_policy(pomdp, policy, "SARSOP", 200, verbose=false) # SARSOP or greedy
-#         push!(reward_list, rewards)
-#         push!(acc_list, accuracy)
-#     end
-#     x = range(1, end_λ)
-#     p1 = scatter(x, reward_list, color=:blue, xlabel="λ", ylabel="Reward Value", title="Reward", label="rewards")
-#     p2 = scatter(x, acc_list, color=:red, xlabel="λ", ylabel="Accuracy (0 to 1)", title="Accuracy", label="Accuracy")
-#     p = Plots.plot(p1, p2, layout=(1, 2), size=(800, 400), title="Pareto Frontier")
-#     savefig(p, "./figures/pareto_frontier.png")
-# end
-
-# # @show_requirements POMDPs.solve(solver, pomdp)

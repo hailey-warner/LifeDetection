@@ -1,11 +1,11 @@
 # simulation flags
 WANDB = false
-POLICY = "CONOPS" # "CONOPS" "GREEDY" "SARSOP
+POLICY = "SARSOP" # "CONOPS" "GREEDY" "SARSOP
 # Thresholds for decision
 threshold_high = 0.15#0.99999
 threshold_low = 0.01#0.00001
 VERBOSE = true
-POLICYLOAD = true
+POLICYLOAD = false
 EPISODES = 3
 proj_name = "test"
 # proj_name = "CONOPS_test-H_$(threshold_high)-L_$(threshold_low)"
@@ -13,12 +13,12 @@ proj_name = "test"
 # if you only want to run 1 run, set START and END to same value and SWEEP as 1 
 
 # incorrect penalty
-λ_START = 0.99
-λ_END = 0.99
+λ_START = 0.8
+λ_END = 0.8
 λ_SWEEP = 1
 # declare abiotic penalty
-τ_START = 0.05
-τ_END = 0.05
+τ_START = 1
+τ_END = 1
 τ_SWEEP = 1
 # discount factor
 γ_START = 0.9

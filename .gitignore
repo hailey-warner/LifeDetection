@@ -13,3 +13,5 @@ policy.out
 /goodPolicies
 /wandb
 .CondaPkg
+pareto_csv/
+test/tewr.jl
