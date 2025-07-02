@@ -35,118 +35,149 @@ end
 # Get PART_ID and NUM_PARTS
 # -------------------------------
 function get_part_info()
+    part_id_str = get(ENV, "PART_ID", get(ARGS, 1, nothing))
+    if part_id_str === nothing
+        error("Missing PART_ID. Set it via environment variable or pass as CLI argument 1.")
+    end
     part_id = try
-        parse(Int, get(ENV, "PART_ID", get(ARGS, 1, "1")))
+        parse(Int, part_id_str)
     catch
-        error("Invalid PART_ID. Pass via env var or CLI argument 1.")
+        error("Invalid PART_ID. Must be an integer.")
     end
 
+    num_parts_str = get(ENV, "NUM_PARTS", get(ARGS, 2, nothing))
+    if num_parts_str === nothing
+        error("Missing NUM_PARTS. Set it via environment variable or pass as CLI argument 2.")
+    end
     num_parts = try
-        parse(Int, get(ENV, "NUM_PARTS", get(ARGS, 2, "3")))
+        parse(Int, num_parts_str)
     catch
-        error("Invalid NUM_PARTS. Pass via env var or CLI argument 2.")
+        error("Invalid NUM_PARTS. Must be an integer.")
     end
 
     if part_id < 1 || part_id > num_parts
-        error("PART_ID must be between 1 and NUM_PARTS")
+        error("PART_ID must be between 1 and NUM_PARTS (got $part_id, expected 1-$num_parts)")
     end
 
     return part_id, num_parts
 end
-
 
 # -------------------------------
 # PARETO_FRONTIER Collection
 # -------------------------------
 if PARETO_FRONTIER
 
+
 	PART_ID, NUM_PARTS = get_part_info()
-		
-	entity = "sherpa-rpa"
-	# ignore = ["hailey_lambda_0.99_tau_0.05_gamma_0.9_sample_100",
-	#           "hailey_lambda_0.925_tau_0.5_gamma_0.9_sample_100"]
+	# Create unique working directory
+	work_dir = "testing/part_$(PART_ID)_$(NUM_PARTS)"
+	mkpath(work_dir)
 
-	api = Wandb.wandb.Api()
-	projects = api.projects(entity=entity)
-	all_filtered_projects = [p for p in projects if startswith(string(p.name), projname)]
-	total = length(all_filtered_projects)
+	cd(work_dir) do
+			
+		entity = "sherpa-rpa"
+		# ignore = ["hailey_lambda_0.99_tau_0.05_gamma_0.9_sample_100",
+		#           "hailey_lambda_0.925_tau_0.5_gamma_0.9_sample_100"]
 
-	chunk_size = ceil(Int, total / NUM_PARTS)
-	start_idx = (PART_ID - 1) * chunk_size + 1
-	end_idx = min(PART_ID * chunk_size, total)
-	filtered_projects = all_filtered_projects[start_idx:end_idx]
+		api = Wandb.wandb.Api()
+		projects = api.projects(entity=entity)
+		all_filtered_projects = [p for p in projects if startswith(string(p.name), projname)]
+		total = length(all_filtered_projects)
 
-	println("PART $PART_ID of $NUM_PARTS handling projects $start_idx to $end_idx")
+		chunk_size = ceil(Int, total / NUM_PARTS)
+		start_idx = (PART_ID - 1) * chunk_size + 1
+		end_idx = min(PART_ID * chunk_size, total)
+		filtered_projects = all_filtered_projects[start_idx:end_idx]
 
-	count_local = length(filtered_projects)
-	average_tt = zeros(Float64, count_local)
-	average_ft = zeros(Float64, count_local)
-	average_tf = zeros(Float64, count_local)
-	average_ff = zeros(Float64, count_local)
-	errors = fill("", count_local)
+		println("PART $PART_ID of $NUM_PARTS handling projects $start_idx to $end_idx")
 
-	for (i, project) in enumerate(filtered_projects)
-		proj_name = string(project.name)
-		try
+		count_local = length(filtered_projects)
+		average_tt = zeros(Float64, count_local)
+		average_ft = zeros(Float64, count_local)
+		average_tf = zeros(Float64, count_local)
+		average_ff = zeros(Float64, count_local)
+		acc_rate = zeros(Float64, count_local)
+		errors = fill("", count_local)
 
-			runs = api.runs("$entity/$proj_name")
-			count = 0
-			temp_tt = 0.0
-			temp_tf = 0.0
-			temp_ft = 0.0
-			temp_ff = 0.0
+		for (i, project) in enumerate(filtered_projects)
+			proj_name = string(project.name)
+			# try
 
-			for run in runs
-				if string(run.state) == "finished"
-					try
-						tt = parse(Int, string(run.summary["tt"]))
-						tf = parse(Int, string(run.summary["tf"]))
-						ft = parse(Int, string(run.summary["ft"]))
-						ff = parse(Int, string(run.summary["ff"]))
+				runs = api.runs("$entity/$proj_name")
+				count = 0
+				temp_tt = 0.0
+				temp_tf = 0.0
+				temp_ft = 0.0
+				temp_ff = 0.0
+				count_action7 = 0.0
 
-						total_t = tt + tf
-						total_f = ft + ff
+				for run in runs
+					if string(run.state) == "finished"
+							for hist in run.history(pandas=false)
+								# println(hist["action"])
+								if 7 == parse(Int,string(hist["action"]))
+									count_action7 += 1
+								end
+							end
+							# println("Run $(run.name): action 7 occurred $count_action7 times")
+							
+						try
+							tt = parse(Int, string(run.summary["tt"]))
+							tf = parse(Int, string(run.summary["tf"]))
+							ft = parse(Int, string(run.summary["ft"]))
+							ff = parse(Int, string(run.summary["ff"]))
 
-						temp_tt += tt / total_t
-						temp_tf += tf / total_t
-						temp_ft += ft / total_f
-						temp_ff += ff / total_f
+							total_t = tt + tf
+							total_f = ft + ff
 
-						count += 1
-					catch
-						println("Skipping run with missing metrics in $proj_name")
+							temp_tt += tt / total_t
+							temp_tf += tf / total_t
+							temp_ft += ft / total_f
+							temp_ff += ff / total_f
+
+							count += 1
+						catch
+							println("Skipping run with missing metrics in $proj_name")
+						end
 					end
 				end
-			end
 
-			if count > 0
-				average_tt[i] = temp_tt / count
-				average_tf[i] = temp_tf / count
-				average_ft[i] = temp_ft / count
-				average_ff[i] = temp_ff / count
-			else
-				errors[i] = "No valid runs found"
-			end
-		catch e
-			errors[i] = "Error processing $proj_name: $e"
+				if count > 0
+					average_tt[i] = temp_tt / count
+					average_tf[i] = temp_tf / count
+					average_ft[i] = temp_ft / count
+					average_ff[i] = temp_ff / count
+					acc_rate[i] = count_action7 / count
+				else
+					errors[i] = "No valid runs found"
+				end
+				println("average_tt: ", average_tt)
+				println("average_tf: ", average_tf)
+				println("average_ft: ", average_ft)
+				println("average_ff: ", average_ff)
+				println("acc_rate: ", acc_rate)
+			# catch e
+			# 	errors[i] = "Error processing $proj_name: $e"
+			# end
 		end
-	end
 
-	# Save results
-	if !isdir("pareto_csv")
-		mkpath("pareto_csv")
-	end
-
-	output_file = "pareto_csv/pareto_part_$(PART_ID)_of_$(NUM_PARTS).csv"
-	open(output_file, "w") do io
-		write(io, "project,average_tt,average_tf,average_ft,average_ff,error\n")
-		for i in 1:count_local
-			proj_str = string(filtered_projects[i].name)
-			err = isempty(errors[i]) ? "none" : errors[i]
-			write(io, "$proj_str,$(average_tt[i]),$(average_tf[i]),$(average_ft[i]),$(average_ff[i]),$err\n")
+		# Save results
+		if !isdir("pareto_csv")
+			mkpath("pareto_csv")
 		end
+
+		output_file = "/nfs/gkim65/git_repos/LifeDetection/pareto_csv/pareto_part_$(PART_ID)_of_$(NUM_PARTS).csv"
+		open(output_file, "w") do io
+			write(io, "project,average_tt,average_tf,average_ft,average_ff,acc_rate,error\n")
+			for i in 1:count_local
+				proj_str = string(filtered_projects[i].name)
+				err = isempty(errors[i]) ? "none" : errors[i]
+				write(io, "$proj_str,$(average_tt[i]),$(average_tf[i]),$(average_ft[i]),$(average_ff[i]),$(acc_rate[i]),$err\n")
+			end
+		end
+		println("Saved part results to $output_file")
+		
 	end
-	println("Saved part results to $output_file")
 end
 
 if PLOT_BN == true

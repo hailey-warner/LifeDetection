@@ -15,3 +15,5 @@ policy.out
 .CondaPkg
 pareto_csv/
 test/tewr.jl
+*.sh
+testing/
