@@ -1,9 +1,22 @@
-method: grid
-parameters:
-  λ:
-    values: [0, 1, 2]
-  τ:
-    values: [0, 1]
-  γ:
-    values: [0.9, 0.95]
+evaluations:
+  wandb: true
+  policy: "SARSOP" # "CONOPS" "GREEDY" "SARSOP
+  threshold_high: 0.15 #0.99999 CONOPS ONLY
+  threshold_low: 0.01 #0.00001 CONOPS ONLY
+  verbose: true
+  policy_load: false
+  episodes: 3
+  proj_name: "test" # "CONOPS_test-H_$(threshold_high)-L_$(threshold_low)"
+  work_dir: "testing/solve1_2tau" # TODO: Set to meaningful name to play around
 
+
+parameters:
+  lambda: [0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
+  tau: [0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
+  gamma: [0.9]
+
+# add in off nominal nominal testing later:
+
+scenario:
+  acc_rate: 3
+  sample_Max_Chamber: 100
