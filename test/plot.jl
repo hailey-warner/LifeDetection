@@ -8,8 +8,9 @@ PLOT_BN       = false
 DECISION_TREE = false
 
 ALPHA_VECTORS_HEATMAP = false
-PARETO_FRONTIER = true
-projname = "paretoV3"
+PARETO_FRONTIER_SINGLE = true
+PARETO_FRONTIER = false
+projname = "hailey_custom"
 
 # -------------------------------
 # Package Setup
@@ -20,7 +21,7 @@ if PLOT_BN || PLOT_CPDS || DECISION_TREE
 	Pkg.instantiate()
 	include("../src/common/plotting_tikz.jl")
 	include("../src/bayes_net.jl")
-elseif PARETO_FRONTIER
+elseif PARETO_FRONTIER || PARETO_FRONTIER_SINGLE
 	Pkg.activate("wandbPkg")
 	Pkg.instantiate()
 	include("../src/common/plotting_wandb.jl")
@@ -178,6 +179,124 @@ if PARETO_FRONTIER
 		println("Saved part results to $output_file")
 		
 	end
+end
+
+
+if PARETO_FRONTIER_SINGLE
+
+	using Wandb
+	api = Wandb.wandb.Api()
+
+	# Replace with your actual entity (user or team name)
+	entity = "sherpa-rpa"
+
+	# Get all projects under the entity
+	projects = api.projects(entity=entity)
+
+	project_counts = collect(projects)
+	# Count the number of projects that start with "pareto_"
+	all_filtered_projects = [p for p in projects if startswith(string(p.name), projname)]
+
+	pareto_count = count(project_count -> startswith(string(project_count.name), projname), project_counts)
+
+	average_tt = zeros(Float64,pareto_count)
+	average_ft = zeros(Float64,pareto_count)
+	average_tf = zeros(Float64,pareto_count)
+	average_ff = zeros(Float64,pareto_count)
+	acc_rate = zeros(Float64, pareto_count)
+
+
+	for (proj_idx, project) in enumerate(all_filtered_projects)
+		if startswith(string(project.name), projname)
+			# Combine the entity and project name into a single string
+			project_path = string(entity, "/", project.name)
+			runs_pareto = api.runs(project_path)
+
+			count = 0
+			temp_tt = 0.0
+			temp_tf = 0.0
+			temp_ft = 0.0
+			temp_ff = 0.0
+			count_action7 = 0.0
+
+			for idx in range(1,length(runs_pareto)-1)
+				if string(runs_pareto[idx].state) == "finished"
+					print(idx)
+					for hist in runs_pareto[idx].history(pandas=false)
+						# println(hist["action"])
+						if 7 == parse(Int,string(hist["action"]))
+							count_action7 += 1
+						end
+					end
+					# try
+					tt = parse(Int, string(runs_pareto[idx].summary["tt"]))
+					tf = parse(Int, string(runs_pareto[idx].summary["tf"]))
+					ft = parse(Int, string(runs_pareto[idx].summary["ft"]))
+					ff = parse(Int, string(runs_pareto[idx].summary["ff"]))
+					total_t = tt + tf
+					temp_tt = tt / total_t
+					temp_tf = tf / total_t
+
+					total_f = ft + ff
+					temp_ft = ft / total_f
+					temp_ff = ff / total_f
+
+					count += 1
+					# catch
+					# 	println("Run doesn't have the correct metrics / data")
+					# end
+				end
+			end 
+
+
+			average_tt[proj_idx] = temp_tt / count
+			average_tf[proj_idx] = temp_tf / count
+			average_ft[proj_idx] = temp_ft / count
+			average_ff[proj_idx] = temp_ff / count
+			acc_rate[proj_idx] = count_action7 / count
+
+
+		end
+	end
+
+	# Scatter plot 1: average_tt vs average_tf
+	p1 = scatter(
+		average_tf, average_ft,
+		xlabel = "false negative: declared dead when life is true",
+		ylabel = "false positive: declared life when life is false",
+		# title = "Average TT vs Average TF",
+		label = "Projects"
+	)
+	min_tf, min_idx = findmin(average_tf)
+	println("Project with smallest average_tf: ", all_filtered_projects[min_idx])
+	println(all_filtered_projects)
+	println(average_tf)
+	println(average_ft)
+	# # Scatter plot 2: average_ft vs average_ff
+	# p2 = scatter(
+	# 	average_ft, average_ff,
+	# 	xlabel = "Average FT",
+	# 	ylabel = "Average FF",
+	# 	title = "Average FT vs Average FF",
+	# 	label = "Projects"
+	# )
+
+	# Combine plots side by side
+	# plot_combined = plot(p1, p2, layout = (1, 2), size = (900, 400))
+	savefig(p1, "./figures/pareto_scatter.png")
+	display(p1)
+
+
+	output_file = "pareto_csv/pareto_test.csv"
+	open(output_file, "w") do io
+		write(io, "project,average_tt,average_tf,average_ft,average_ff,acc_rate\n")
+		for i in 1:pareto_count
+			proj_str = string(all_filtered_projects[i].name)
+			write(io, "$proj_str,$(average_tt[i]),$(average_tf[i]),$(average_ft[i]),$(average_ff[i]),$(acc_rate[i])\n")
+		end
+	end
+	println("Saved part results to $output_file")
+
 end
 
 if PLOT_BN == true
